@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MY MOON</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --ink: #211b16;
+      --ivory: #f6efe3;
+      --paper: #fbf7ef;
+      --rose: #c17f70;
+      --wine: #6f3733;
+      --gold: #b99a63;
+      --sage: #8b9a7a;
+      --line: rgba(33, 27, 22, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--ivory);
+      color: var(--ink);
+      font-family: 'Jost', sans-serif;
+      font-weight: 300;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* subtle paper grain */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px);
+      background-size: 3px 3px;
+      z-index: 1;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    /* ---------- NAV ---------- */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 22px 6vw;
+      background: rgba(246, 239, 227, 0.88);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem;
+      letter-spacing: 0.03em;
+    }
+
+    .logo em {
+      font-style: italic;
+      color: var(--wine);
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: 34px;
+    }
+
+    nav a {
+      text-decoration: none;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      position: relative;
+      padding-bottom: 4px;
+    }
+
+    nav a::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 0;
+      height: 1px;
+      background: var(--wine);
+      transition: width .3s ease;
+    }
+
+    nav a:hover::after {
+      width: 100%;
+    }
+
+    .nav-toggle {
+      display: none;
+    }
+
+    /* ---------- HERO ---------- */
+    .hero {
+      position: relative;
+      min-height: 78vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 6vw 90px;
+      overflow: hidden;
+    }
+
+    .hero-eyebrow {
+      font-size: 0.75rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--wine);
+      margin-bottom: 22px;
+    }
+
+    .hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 500;
+      font-size: clamp(2.6rem, 7vw, 5.4rem);
+      line-height: 1.05;
+      max-width: 16ch;
+    }
+
+    .hero h1 em {
+      font-style: italic;
+      color: var(--rose);
+    }
+
+    .hero p {
+      margin-top: 26px;
+      max-width: 46ch;
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: rgba(33, 27, 22, 0.72);
+    }
+
+
+    /* ---------- GALLERY ---------- */
+    .gallery-wrap {
+      padding: 0 5vw 100px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .gallery {
+      columns: 4 260px;
+      column-gap: 34px;
+    }
+
+    @media (max-width:900px) {
+      .gallery {
+        columns: 2 240px;
+      }
+    }
+
+    @media (max-width:520px) {
+      .gallery {
+        columns: 1;
+      }
+    }
+
+    .card {
+      break-inside: avoid;
+      margin-bottom: 34px;
+      background: var(--paper);
+      padding: 14px 14px 20px;
+      box-shadow: 0 10px 26px rgba(33, 27, 22, 0.10);
+      transform: rotate(var(--r, -1.4deg));
+      transition: transform .4s ease, box-shadow .4s ease;
+      position: relative;
+      cursor: default;
+    }
+
+    .card:nth-child(2n) {
+      --r: 1.6deg;
+    }
+
+    .card:nth-child(3n) {
+      --r: -0.8deg;
+    }
+
+    .card:nth-child(4n) {
+      --r: 2.1deg;
+    }
+
+    .card:nth-child(5n) {
+      --r: -2deg;
+    }
+
+    .card:hover {
+      transform: rotate(0deg) translateY(-6px);
+      box-shadow: 0 22px 40px rgba(33, 27, 22, 0.18);
+      z-index: 5;
+    }
+
+    .tape {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%) rotate(-3deg);
+      width: 64px;
+      height: 22px;
+      background: rgba(201, 166, 103, 0.55);
+      border: 1px solid rgba(201, 166, 103, 0.7);
+    }
+
+    .frame {
+      aspect-ratio: var(--ar, 4/5);
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, #e7dcc7, #d8c6ab 40%, #cbb491 70%, #e2d3ba);
+    }
+
+    .frame img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      /* shows the FULL photo, never crops */
+      object-position: center;
+    }
+
+    .frame svg {
+      position: absolute;
+      inset: 0;
+      margin: auto;
+      width: 34%;
+      height: 34%;
+      opacity: 0.5;
+    }
+
+    .frame .ph-label {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      right: 10px;
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      color: rgba(33, 27, 22, 0.55);
+      font-family: 'Jost', sans-serif;
+      background: rgba(251, 247, 239, 0.55);
+      padding: 3px 6px;
+    }
+
+    .caption {
+      padding-top: 14px;
+      text-align: center;
+    }
+
+    .caption .title {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 1.15rem;
+    }
+
+    .caption .meta {
+      margin-top: 4px;
+      font-size: 0.68rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(33, 27, 22, 0.55);
+    }
+
+    .card[data-cat="golden"] {
+      display: block;
+    }
+
+    /* ---------- HOW TO USE (guide block, remove when done) ---------- */
+    .howto {
+      margin: 0 6vw 90px;
+      border: 1px dashed var(--wine);
+      background: rgba(111, 55, 51, 0.05);
+      padding: 26px 30px;
+      font-size: 0.85rem;
+      line-height: 1.8;
+      color: rgba(33, 27, 22, 0.8);
+    }
+
+    .howto strong {
+      color: var(--wine);
+    }
+
+    .howto code {
+      background: rgba(33, 27, 22, 0.08);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    /* ---------- CTA ---------- */
+    .cta {
+      text-align: center;
+      padding: 100px 6vw 130px;
+      border-top: 1px solid var(--line);
+    }
+
+    .cta h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 500;
+      font-style: italic;
+      font-size: clamp(1.9rem, 4vw, 3rem);
+      max-width: 20ch;
+      margin: 0 auto 22px;
+    }
+
+    .cta p {
+      max-width: 44ch;
+      margin: 0 auto 34px;
+      color: rgba(33, 27, 22, 0.7);
+      line-height: 1.7;
+    }
+
+    .btn {
+      display: inline-block;
+      background: var(--wine);
+      color: var(--paper);
+      text-decoration: none;
+      padding: 16px 38px;
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      transition: background .25s ease, transform .25s ease;
+    }
+
+    .btn:hover {
+      background: var(--ink);
+      transform: translateY(-2px);
+    }
+
+    footer {
+      padding: 36px 6vw;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--line);
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      color: rgba(33, 27, 22, 0.55);
+    }
+
+    @media (max-width:600px) {
+      footer {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+
+      .card,
+      .btn,
+      nav a::after {
+        transition: none;
+      }
+    }
+
+    /* ---------- COMMENT BUTTON ON CARD ---------- */
+    .frame {
+      cursor: zoom-in;
+    }
+
+    .comment-btn {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      border: none;
+      background: rgba(33, 27, 22, 0.55);
+      color: var(--paper);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.72rem;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      backdrop-filter: blur(2px);
+      transition: background .2s ease, transform .2s ease;
+    }
+
+    .comment-btn:hover {
+      background: var(--wine);
+      transform: translateY(-1px);
+    }
+
+    .comment-btn svg {
+      width: 15px;
+      height: 15px;
+      flex: none;
+    }
+
+    .comment-btn .count {
+      min-width: 8px;
+      text-align: left;
+    }
+
+    /* ---------- LIGHTBOX / PRESENTATION MODE ---------- */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: rgba(17, 13, 10, 0.96);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+    }
+
+    .lightbox.open {
+      display: flex;
+      animation: lbFade .25s ease;
+    }
+
+    @keyframes lbFade {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .lb-stage {
+      position: relative;
+      width: min(92vw, 900px);
+      height: min(84vh, 900px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .lb-stage img {
+      max-width: 100%;
+      max-height: 72vh;
+      object-fit: contain;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      user-select: none;
+      -webkit-user-drag: none;
+      background: #1a1512;
+    }
+
+    .lb-caption {
+      text-align: center;
+      color: var(--ivory);
+      margin-top: 18px;
+      padding: 0 12px;
+    }
+
+    .lb-caption .lb-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 1.3rem;
+    }
+
+    .lb-caption .lb-meta {
+      margin-top: 6px;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(246, 239, 227, 0.6);
+    }
+
+    .lb-close,
+    .lb-prev,
+    .lb-next {
+      position: fixed;
+      border: none;
+      background: rgba(246, 239, 227, 0.1);
+      color: var(--ivory);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s ease;
+      z-index: 210;
+    }
+
+    .lb-close:hover,
+    .lb-prev:hover,
+    .lb-next:hover {
+      background: rgba(246, 239, 227, 0.22);
+    }
+
+    .lb-close {
+      top: 18px;
+      right: 18px;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+
+    .lb-prev,
+    .lb-next {
+      top: 50%;
+      transform: translateY(-50%);
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      font-size: 1.2rem;
+    }
+
+    .lb-prev {
+      left: 16px;
+    }
+
+    .lb-next {
+      right: 16px;
+    }
+
+    .lb-comment-toggle {
+      position: absolute;
+      bottom: -2px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100%);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: none;
+      background: rgba(246, 239, 227, 0.12);
+      color: var(--ivory);
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      margin-top: 14px;
+    }
+
+    .lb-comment-toggle:hover {
+      background: rgba(246, 239, 227, 0.22);
+    }
+
+    .lb-comment-toggle svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .lb-index {
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      color: rgba(246, 239, 227, 0.6);
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      z-index: 210;
+    }
+
+    @media (max-width:640px) {
+
+      .lb-prev,
+      .lb-next {
+        width: 38px;
+        height: 38px;
+      }
+
+      .lb-prev {
+        left: 6px;
+      }
+
+      .lb-next {
+        right: 6px;
+      }
+
+      .lb-close {
+        top: 10px;
+        right: 10px;
+      }
+    }
+
+    /* ---------- COMMENT SHEET (Instagram-style bottom sheet) ---------- */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 220;
+      background: rgba(17, 13, 10, 0.5);
+      display: none;
+    }
+
+    .sheet-backdrop.open {
+      display: block;
+    }
+
+    .comment-sheet {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: -100%;
+      z-index: 230;
+      background: var(--paper);
+      border-radius: 22px 22px 0 0;
+      box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+      max-width: 560px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      height: min(68vh, 640px);
+      transition: bottom .32s cubic-bezier(.32, .72, 0, 1);
+    }
+
+    .comment-sheet.open {
+      bottom: 0;
+    }
+
+    .comment-sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--line);
+      border-radius: 999px;
+      margin: 10px auto 4px;
+    }
+
+    .comment-sheet-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px 14px;
+      border-bottom: 1px solid var(--line);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.15rem;
+      font-style: italic;
+    }
+
+    .comment-sheet-header button {
+      border: none;
+      background: none;
+      font-size: 1.4rem;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--ink);
+    }
+
+    .comment-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 20px;
+    }
+
+    .comment-item {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .comment-avatar {
+      flex: none;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--rose), var(--gold));
+      color: var(--paper);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .comment-body .comment-name {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--wine);
+    }
+
+    .comment-body .comment-text {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-top: 2px;
+    }
+
+    .comment-body .comment-time {
+      font-size: 0.66rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(33, 27, 22, 0.45);
+      margin-top: 4px;
+    }
+
+    .comment-empty {
+      text-align: center;
+      padding: 40px 10px;
+      color: rgba(33, 27, 22, 0.5);
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 1.05rem;
+    }
+
+    .comment-form {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    .comment-form input[type="text"] {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: var(--ivory);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-family: 'Jost', sans-serif;
+      font-size: 0.85rem;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .comment-form #commentName {
+      flex: 0 0 30%;
+    }
+
+    .comment-form input[type="text"]:focus {
+      border-color: var(--rose);
+    }
+
+    .comment-form button {
+      border: none;
+      background: var(--wine);
+      color: var(--paper);
+      padding: 0 18px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .2s ease;
+    }
+
+    .comment-form button:hover {
+      background: var(--ink);
+    }
+
+    @media (max-width:520px) {
+      .comment-form #commentName {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- // header and nav -->
+
+  <section class="hero">
+    <div class="hero-eyebrow">Our Photography Journal</div>
+    <h1>Our<em> first</em> date</h1>
+    <p>Hmri first date Om Chaap Corner per thi aur vha maine tuje pahli baar kiss kia tha.Tune pahli baar maine haat
+      pakda tha ... aur pahli baar hmne kiss kia tha .. OUR ALL FIRST DATE</p>
+
+  </section>
+
+
+  <div class="gallery-wrap" id="gallery">
+    <div class="gallery" id="galleryGrid">
+      <!-- Cards are generated by JS below from the PHOTOS array -->
+    </div>
+  </div>
+
+
+  <footer>
+    <div>© 2026 MOON</div>
+    <div>Started in Delhi · Going to be forever</div>
+  </footer>
+
+  <!-- ---------- LIGHTBOX (presentation mode) ---------- -->
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <div class="lb-index" id="lbIndex"></div>
+    <button class="lb-close" id="lbClose" aria-label="Close">&times;</button>
+    <button class="lb-prev" id="lbPrev" aria-label="Previous photo">&#10094;</button>
+    <div class="lb-stage" id="lbStage">
+      <img id="lbImage" src="" alt="">
+      <div class="lb-caption">
+        <div class="lb-title" id="lbTitle"></div>
+        <div class="lb-meta" id="lbMeta"></div>
+      </div>
+      <button class="lb-comment-toggle" id="lbCommentToggle">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path
+            d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
+            stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span id="lbCommentCount"></span>
+      </button>
+    </div>
+    <button class="lb-next" id="lbNext" aria-label="Next photo">&#10095;</button>
+  </div>
+
+  <!-- ---------- COMMENT SHEET ---------- -->
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="comment-sheet" id="commentSheet" aria-hidden="true">
+    <div class="comment-sheet-handle"></div>
+    <div class="comment-sheet-header">
+      <span id="commentSheetTitle">Comments</span>
+      <button id="commentClose" aria-label="Close comments">&times;</button>
+    </div>
+    <div class="comment-list" id="commentList"></div>
+    <form class="comment-form" id="commentForm">
+      <input type="text" id="commentName" placeholder="Your name" autocomplete="off">
+      <input type="text" id="commentInput" placeholder="Add a comment…" autocomplete="off" required>
+      <button type="submit">Post</button>
+    </form>
+  </div>
+
+  <!-- Supabase client library (same project as pro.html) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ---- Placeholder icon (used until real photos are dropped in) ----
+    const HEART_SVG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="" stroke="#6f3733" stroke-width="1.3"/>
+  </svg>`;
+
+    // Replace `img` paths below with your real photo files.
+    const PHOTOS = [
+      { img: "images/1.jpeg", title: "Anytime i see this photo..  i just fall in love with your neck", couple: "Ashifa & Anshu", cat: "golden", ratio: "4/5" },
+      { img: "images/2.jpeg", title: "bhootii ! dara diya na muje ", couple: "Ashifa & Anshu", cat: "city", ratio: "1/1" },
+      { img: "images/3.jpeg", title: "Itni bhuri lag rhi h ki ankhe hi band kar li 😂", couple: "Ashifa & Anshu", cat: "adventure", ratio: "3/4" },
+      { img: "images/4.jpeg", title: "Kar diya na muje bhi pagal", couple: "Ashifa & Anshu", cat: "quiet", ratio: "4/5" },
+      { img: "images/5.jpeg", title: "Man kar rha h kiss kar lu ", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/6.jpeg", title: "Never forgot those kisses", couple: "Ashifa & Anshu", cat: "city", ratio: "1/1" },
+      { img: "images/7.jpeg", title: "Filter laga ke mea bhi hero lagta hu ", couple: "Ashifa & Anshu", cat: "adventure", ratio: "4/5" },
+      { img: "images/8.jpeg", title: "Lookinngggg sooo perfecttttt", couple: "Ashifa & Anshu", cat: "quiet", ratio: "1/1" },
+      { img: "images/11.jpeg", title: "your LIPssss", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/12.jpeg", title: "Another holding hands", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/13.jpeg", title: "Ameer baddie ko majdur ne fasa liya", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/14.jpeg", title: "fir vahii khulee balo me sexy ladki", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/15.jpeg", title: "Aise hi mere kandhe per hmesha apna sar rakhe rakhna ", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/16.jpeg", title: "Neck per ak kiss kar luu ??", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/17.jpeg", title: "I don't know why but i love your hands", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/18.jpeg", title: "i love your little hands...", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/19.jpeg", title: "Tere gaal ko khaa jane ka mann karta h", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+      { img: "images/20.jpeg", title: "Kisi din teri neck per itna jor se kiss karunga ki ....", couple: "Ashifa & Anshu", cat: "golden", ratio: "3/4" },
+     
+    ];
+
+    const grid = document.getElementById('galleryGrid');
+
+    const COMMENT_SVG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+
+    function render(list) {
+      grid.innerHTML = list.map((p, i) => `
+      <div class="card" data-cat="${p.cat}">
+        <div class="tape"></div>
+        <div class="frame" style="--ar:${p.ratio}">
+         <img src="${p.img}" alt="${p.title}" data-index="${i}">
+         <button class="comment-btn" data-index="${i}" aria-label="Comments on this photo">
+           ${COMMENT_SVG}
+           <span class="count" id="grid-count-${i}"></span>
+         </button>
+        </div>
+        <div class="caption">
+          <div class="title">${p.title}</div>
+          <div class="meta">${p.couple}</div>
+        </div>
+      </div>
+    `).join('');
+    }
+
+    render(PHOTOS);
+
+    /* =====================================================
+       PRESENTATION MODE (lightbox) + INSTAGRAM-STYLE COMMENTS
+       ===================================================== */
+    (function () {
+      let currentIndex = 0;
+
+      // ---- elements ----
+      const lightbox = document.getElementById('lightbox');
+      const lbImage = document.getElementById('lbImage');
+      const lbTitle = document.getElementById('lbTitle');
+      const lbMeta = document.getElementById('lbMeta');
+      const lbIndex = document.getElementById('lbIndex');
+      const lbClose = document.getElementById('lbClose');
+      const lbPrev = document.getElementById('lbPrev');
+      const lbNext = document.getElementById('lbNext');
+      const lbStage = document.getElementById('lbStage');
+      const lbCommentToggle = document.getElementById('lbCommentToggle');
+      const lbCommentCount = document.getElementById('lbCommentCount');
+
+      const sheetBackdrop = document.getElementById('sheetBackdrop');
+      const commentSheet = document.getElementById('commentSheet');
+      const commentSheetTitle = document.getElementById('commentSheetTitle');
+      const commentClose = document.getElementById('commentClose');
+      const commentList = document.getElementById('commentList');
+      const commentForm = document.getElementById('commentForm');
+      const commentName = document.getElementById('commentName');
+      const commentInput = document.getElementById('commentInput');
+
+      // ---- comment storage: Supabase (same project as pro.html) ----
+      // ============================================================
+      // Uses the same Supabase project as pro.html. Comments live in
+      // their own table, "photo_comments", separate from pro.html's
+      // "photos" table. Before this works, run this once in your
+      // Supabase project's SQL editor:
+      //
+      //   create table if not exists photo_comments (
+      //     id text primary key,
+      //     photo_key text not null,
+      //     name text,
+      //     comment_text text not null,
+      //     created_at timestamptz default now()
+      //   );
+      //   alter table photo_comments enable row level security;
+      //   create policy "public read" on photo_comments
+      //     for select using (true);
+      //   create policy "public insert" on photo_comments
+      //     for insert with check (true);
+      // ============================================================
+      const SUPABASE_URL = 'https://qpeoldazjmctxaefdwni.supabase.co';
+      const SUPABASE_ANON_KEY = 'sb_publishable_dm8NgOu_Wt1f7ussG76qkw_ODaRW-1h';
+      const COMMENTS_TABLE = 'photo_comments';
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      let commentsCache = {}; // { photoKey: [ {id,name,text,time}, ... ] }
+      let commentsReady = false;
+
+      function photoKey(i) {
+        return PHOTOS[i].img;
+      }
+
+      function cacheRow(row) {
+        const key = row.photo_key;
+        if (!commentsCache[key]) commentsCache[key] = [];
+        if (commentsCache[key].some(c => c.id === row.id)) return; // dedupe
+        commentsCache[key].push({
+          id: row.id,
+          name: row.name || 'Anonymous',
+          text: row.comment_text,
+          time: row.created_at
+        });
+        commentsCache[key].sort((a, b) => new Date(a.time) - new Date(b.time));
+      }
+
+      async function loadAllComments() {
+        const { data, error } = await supabase
+          .from(COMMENTS_TABLE)
+          .select('*')
+          .order('created_at', { ascending: true });
+        if (error) {
+          console.error(error);
+          return;
+        }
+        (data || []).forEach(cacheRow);
+        commentsReady = true;
+      }
+
+      function getComments(i) {
+        return commentsCache[photoKey(i)] || [];
+      }
+
+      async function addComment(i, name, text) {
+        const key = photoKey(i);
+        const entry = {
+          id: 'c' + Date.now() + Math.random().toString(36).slice(2, 8),
+          photo_key: key,
+          name: (name || 'Anonymous').slice(0, 60),
+          comment_text: text,
+          created_at: new Date().toISOString()
+        };
+        const { error } = await supabase.from(COMMENTS_TABLE).insert(entry);
+        if (error) {
+          console.error(error);
+          alert("Couldn't post that comment — please try again.");
+          return false;
+        }
+        cacheRow(entry);
+        refreshCommentCount(i);
+        return true;
+      }
+
+      // live updates: see comments other people post, in real time
+      function subscribeCommentsRealtime() {
+        supabase
+          .channel('public:' + COMMENTS_TABLE)
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: COMMENTS_TABLE }, payload => {
+            cacheRow(payload.new);
+            const i = PHOTOS.findIndex(p => p.img === payload.new.photo_key);
+            if (i === -1) return;
+            refreshCommentCount(i);
+            if (currentIndex === i && commentSheet.classList.contains('open')) {
+              renderComments(i);
+            }
+          })
+          .subscribe();
+      }
+
+      function fmtTime(iso) {
+        try {
+          const d = new Date(iso);
+          return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) +
+            ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+          return '';
+        }
+      }
+
+      function initials(name) {
+        return (name || '?').trim().slice(0, 1).toUpperCase();
+      }
+
+      function refreshCommentCount(i) {
+        const n = getComments(i).length;
+        const gridEl = document.getElementById('grid-count-' + i);
+        if (gridEl) gridEl.textContent = n > 0 ? n : '';
+        if (currentIndex === i) lbCommentCount.textContent = n > 0 ? n : '';
+      }
+
+      function refreshAllCounts() {
+        PHOTOS.forEach((_, i) => refreshCommentCount(i));
+      }
+
+      // ---- lightbox (presentation mode) ----
+      function showPhoto(i) {
+        currentIndex = (i + PHOTOS.length) % PHOTOS.length;
+        const p = PHOTOS[currentIndex];
+        lbImage.src = p.img;
+        lbImage.alt = p.title;
+        lbTitle.textContent = p.title;
+        lbMeta.textContent = p.couple;
+        lbIndex.textContent = (currentIndex + 1) + ' / ' + PHOTOS.length;
+        const n = getComments(currentIndex).length;
+        lbCommentCount.textContent = n > 0 ? n : '';
+      }
+
+      function openLightbox(i) {
+        showPhoto(i);
+        lightbox.classList.add('open');
+        lightbox.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeLightbox() {
+        lightbox.classList.remove('open');
+        lightbox.setAttribute('aria-hidden', 'true');
+        if (!commentSheet.classList.contains('open')) {
+          document.body.style.overflow = '';
+        }
+      }
+
+      function nextPhoto() { showPhoto(currentIndex + 1); }
+      function prevPhoto() { showPhoto(currentIndex - 1); }
+
+      // double-click any photo in the gallery to enter presentation mode
+      grid.addEventListener('dblclick', e => {
+        const img = e.target.closest('img[data-index]');
+        if (!img) return;
+        e.preventDefault();
+        openLightbox(parseInt(img.dataset.index, 10));
+      });
+
+      // comment icon on a grid card opens comments straight away
+      grid.addEventListener('click', e => {
+        const btn = e.target.closest('.comment-btn');
+        if (!btn) return;
+        openComments(parseInt(btn.dataset.index, 10));
+      });
+
+      lbClose.addEventListener('click', closeLightbox);
+      lbPrev.addEventListener('click', prevPhoto);
+      lbNext.addEventListener('click', nextPhoto);
+      lbCommentToggle.addEventListener('click', () => openComments(currentIndex));
+
+      lightbox.addEventListener('click', e => {
+        if (e.target === lightbox) closeLightbox();
+      });
+
+      document.addEventListener('keydown', e => {
+        if (!lightbox.classList.contains('open')) return;
+        if (e.key === 'Escape') {
+          if (commentSheet.classList.contains('open')) closeComments();
+          else closeLightbox();
+        }
+        if (e.key === 'ArrowRight') nextPhoto();
+        if (e.key === 'ArrowLeft') prevPhoto();
+      });
+
+      // swipe left / right on touch devices
+      let touchStartX = null;
+      lbStage.addEventListener('touchstart', e => {
+        touchStartX = e.touches[0].clientX;
+      }, { passive: true });
+      lbStage.addEventListener('touchend', e => {
+        if (touchStartX === null) return;
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(dx) > 40) {
+          if (dx < 0) nextPhoto(); else prevPhoto();
+        }
+        touchStartX = null;
+      }, { passive: true });
+
+      // ---- comment sheet ----
+      function renderComments(i) {
+        const list = getComments(i);
+        commentSheetTitle.textContent = 'Comments · ' + PHOTOS[i].title;
+        if (list.length === 0) {
+          commentList.innerHTML = '<div class="comment-empty">No comments yet — be the first to say something 🤍</div>';
+          return;
+        }
+        commentList.innerHTML = list.map(c => `
+          <div class="comment-item">
+            <div class="comment-avatar">${initials(c.name)}</div>
+            <div class="comment-body">
+              <div class="comment-name">${escapeHtml(c.name)}</div>
+              <div class="comment-text">${escapeHtml(c.text)}</div>
+              <div class="comment-time">${fmtTime(c.time)}</div>
+            </div>
+          </div>
+        `).join('');
+        commentList.scrollTop = commentList.scrollHeight;
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      function openComments(i) {
+        currentIndex = i;
+        renderComments(i);
+        sheetBackdrop.classList.add('open');
+        commentSheet.classList.add('open');
+        commentSheet.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => commentInput.focus(), 260);
+      }
+
+      function closeComments() {
+        commentSheet.classList.remove('open');
+        commentSheet.setAttribute('aria-hidden', 'true');
+        sheetBackdrop.classList.remove('open');
+        if (!lightbox.classList.contains('open')) {
+          document.body.style.overflow = '';
+        }
+      }
+
+      commentClose.addEventListener('click', closeComments);
+      sheetBackdrop.addEventListener('click', closeComments);
+
+      commentForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const text = commentInput.value.trim();
+        if (!text) return;
+        const submitBtn = commentForm.querySelector('button');
+        submitBtn.disabled = true;
+        submitBtn.textContent = '…';
+        const ok = await addComment(currentIndex, commentName.value.trim(), text);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Post';
+        if (ok) {
+          renderComments(currentIndex);
+          commentInput.value = '';
+        }
+      });
+
+      // openComments should reflect the latest data once comments have loaded
+      const _openComments = openComments;
+      openComments = function (i) {
+        _openComments(i);
+        if (!commentsReady) {
+          commentList.innerHTML = '<div class="comment-empty">Loading comments…</div>';
+          loadAllComments().then(() => {
+            refreshAllCounts();
+            if (commentSheet.classList.contains('open')) renderComments(currentIndex);
+          });
+        }
+      };
+
+      // initial load: fetch comments from Supabase, then show counts
+      loadAllComments().then(refreshAllCounts);
+      subscribeCommentsRealtime();
+    })();
+  </script>
+
+</body>
+
+</html>

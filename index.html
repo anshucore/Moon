@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+
+    <title>MOON</title>
+
+    <meta
+      name="description"
+      content="MOON"
+    />
+    <meta name="author" content="pixelcave" />
+
+    <!-- Icons -->
+    <link
+      rel="icon"
+      href="assets/moon.png"
+      sizes="any"
+      type="image/png"
+    />
+    <link
+      rel="icon"
+      href="assets/moon.png"
+      type="image/png"
+    />
+
+    <!-- Inter web font from bunny.net (GDPR compliant) -->
+    <link rel="preconnect" href="https://fonts.bunny.net" />
+    <link
+      href="https://fonts.bunny.net/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Caveat handwritten font, for the love letter -->
+    <link
+      href="https://fonts.bunny.net/css2?family=Caveat:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Tailwind CSS Play CDN (mostly for development/testing purposes) -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+
+    <!-- Tailwind CSS v4 Configuration -->
+    <style type="text/tailwindcss">
+      /* Class based dark mode */
+    
+
+      /* Theme configuration */
+    
+    </style>
+
+    <!-- Alpine.js -->
+    <script
+      defer
+      src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+
+    <!-- Alpine.js (x-cloak - https://alpinejs.dev/directives/cloak) -->
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+
+      @keyframes letter-bob {
+        0%, 100% { transform: translateY(0) rotate(-4deg); }
+        50% { transform: translateY(-6px) rotate(-4deg); }
+      }
+      .letter-bubble {
+        animation: letter-bob 2.6s ease-in-out infinite;
+      }
+
+      /* --- Special-day decorations --- */
+      .decor-layer {
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      /* Balloons drift up from the bottom of the screen, swaying side to side */
+      @keyframes balloon-rise {
+        0%   { transform: translate(0, 10vh) rotate(-3deg); opacity: 0; }
+        8%   { opacity: 1; }
+        25%  { transform: translate(18px, -25vh) rotate(3deg); }
+        50%  { transform: translate(-18px, -55vh) rotate(-3deg); }
+        75%  { transform: translate(18px, -85vh) rotate(3deg); }
+        92%  { opacity: 1; }
+        100% { transform: translate(-10px, -115vh) rotate(-2deg); opacity: 0; }
+      }
+      .balloon {
+        position: absolute;
+        bottom: 0;
+        width: 34px;
+        height: 42px;
+        border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        animation-name: balloon-rise;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+        box-shadow: inset -4px -4px 8px rgba(0,0,0,0.15), inset 4px 4px 10px rgba(255,255,255,0.35);
+      }
+      .balloon::before {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: -7px;
+        width: 0;
+        height: 0;
+        transform: translateX(-50%);
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 7px solid currentColor;
+        opacity: 0.9;
+      }
+      .balloon::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        bottom: -46px;
+        width: 1px;
+        height: 46px;
+        background: rgba(120,120,120,0.5);
+      }
+
+      /* Hearts drift up gently for the anniversary theme */
+      @keyframes heart-rise {
+        0%   { transform: translate(0, 10vh) scale(0.8) rotate(-6deg); opacity: 0; }
+        10%  { opacity: 1; }
+        50%  { transform: translate(14px, -55vh) scale(1) rotate(6deg); }
+        90%  { opacity: 1; }
+        100% { transform: translate(-14px, -115vh) scale(0.9) rotate(-6deg); opacity: 0; }
+      }
+      .floating-heart {
+        position: absolute;
+        bottom: 0;
+        font-size: 26px;
+        animation-name: heart-rise;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+      }
+
+      /* Confetti / party poppers fall from the top */
+      @keyframes confetti-fall {
+        0%   { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
+        6%   { opacity: 1; }
+        100% { transform: translateY(110vh) rotate(540deg); opacity: 0.9; }
+      }
+      .confetti-piece {
+        position: absolute;
+        top: 0;
+        width: 9px;
+        height: 14px;
+        animation-name: confetti-fall;
+        animation-timing-function: linear;
+        animation-iteration-count: infinite;
+      }
+    </style>
+  </head>
+  <body class="antialiased">
+    <!-- Page Container -->
+    <div
+      x-data="{
+        darkMode: false,
+        toggleDarkMode() {
+          this.darkMode = ! this.darkMode;
+
+          // Toggle dark class on html element
+          if (this.darkMode) {
+            document.body.parentNode.classList.add('dark');
+          } else {
+            document.body.parentNode.classList.remove('dark');
+          }
+        },
+
+        unlocked: sessionStorage.getItem('moon-unlocked') === 'true',
+        passwordInput: '',
+        passwordError: false,
+        checking: false,
+        correctHash: '4eb5846da827413241cccdfd2c225543f16aaef1f9af51f6a245a9cdeb1ebfd1',
+
+        async submitPassword() {
+          if (!this.passwordInput) return;
+          this.checking = true;
+          this.passwordError = false;
+
+          const enc = new TextEncoder().encode(this.passwordInput);
+          const digest = await crypto.subtle.digest('SHA-256', enc);
+          const hashHex = Array.from(new Uint8Array(digest))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+
+          if (hashHex === this.correctHash) {
+            this.unlocked = true;
+            sessionStorage.setItem('moon-unlocked', 'true');
+            this.checkSpecialDay();
+          } else {
+            this.passwordError = true;
+          }
+          this.checking = false;
+          this.passwordInput = '';
+        },
+
+        // --- Love letter bubble ---
+        letterOpen: false,
+
+        // --- Special days: birthday (3 Sep) & anniversary (10 Dec) ---
+        isBirthdayToday: false,
+        isAnniversaryToday: false,
+        birthdayLetterOpen: false,
+        anniversaryLetterOpen: false,
+        balloons: [],
+        hearts: [],
+        confetti: [],
+
+        checkSpecialDay() {
+          const now = new Date();
+          const month = now.getMonth() + 1; // 1-12
+          const day = now.getDate();
+
+          this.isBirthdayToday = (month === 9 && day === 3);
+          this.isAnniversaryToday = (month === 12 && day === 10);
+
+          if (this.isBirthdayToday) {
+            this.balloons = this.makeBalloons();
+            this.confetti = this.makeConfetti([
+              '#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'
+            ]);
+            this.birthdayLetterOpen = true;
+          } else if (this.isAnniversaryToday) {
+            this.hearts = this.makeHearts();
+            this.confetti = this.makeConfetti([
+              '#f43f5e', '#fb7185', '#f59e0b', '#fbbf24', '#ec4899'
+            ]);
+            this.anniversaryLetterOpen = true;
+          }
+        },
+
+        makeBalloons() {
+          const colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6'];
+          return Array.from({ length: 14 }, (_, i) => ({
+            id: i,
+            left: Math.round(Math.random() * 94),
+            color: colors[i % colors.length],
+            duration: (9 + Math.random() * 5).toFixed(1),
+            delay: (Math.random() * 9).toFixed(1),
+          }));
+        },
+
+        makeHearts() {
+          const glyphs = ['❤️', '💛', '💕', '💖'];
+          return Array.from({ length: 14 }, (_, i) => ({
+            id: i,
+            left: Math.round(Math.random() * 94),
+            glyph: glyphs[i % glyphs.length],
+            duration: (9 + Math.random() * 5).toFixed(1),
+            delay: (Math.random() * 9).toFixed(1),
+          }));
+        },
+
+        makeConfetti(colors) {
+          return Array.from({ length: 45 }, (_, i) => ({
+            id: i,
+            left: Math.round(Math.random() * 100),
+            color: colors[i % colors.length],
+            duration: (3 + Math.random() * 2.5).toFixed(1),
+            delay: (Math.random() * 4).toFixed(1),
+          }));
+        },
+
+        // --- Time together counter ---
+        timerOpen: false,
+        timeTogether: { years: 0, months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 },
+        startCounting() {
+          const start = new Date(2023, 11, 10, 14, 15, 0); // 10 Dec 2023, 2:15 PM
+          const update = () => {
+            const now = new Date();
+            let years = now.getFullYear() - start.getFullYear();
+            let months = now.getMonth() - start.getMonth();
+            let days = now.getDate() - start.getDate();
+            let hours = now.getHours() - start.getHours();
+            let minutes = now.getMinutes() - start.getMinutes();
+            let seconds = now.getSeconds() - start.getSeconds();
+
+            if (seconds < 0) { seconds += 60; minutes--; }
+            if (minutes < 0) { minutes += 60; hours--; }
+            if (hours < 0) { hours += 24; days--; }
+            if (days < 0) {
+              const prevMonthLastDay = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+              days += prevMonthLastDay;
+              months--;
+            }
+            if (months < 0) { months += 12; years--; }
+
+            this.timeTogether = { years, months, days, hours, minutes, seconds };
+          };
+          update();
+          setInterval(update, 1000);
+        }
+      }"
+      x-init="startCounting(); if (unlocked) checkSpecialDay()"
+      class="min-h-dvh min-w-80 bg-white text-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+    >
+      <!-- Password Gate -->
+      <div
+        x-cloak
+        x-show="!unlocked"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex min-h-dvh items-center justify-center overflow-hidden bg-white p-4 dark:bg-zinc-950"
+      >
+        <!--
+          Lock screen background photo (desktop / tablet).
+          To change it later, just upload a new image as
+          assets/bg.png (same filename replaces it automatically),
+          or edit the src below to point at a different file.
+          Hidden on phone-sized screens in favor of the dedicated
+          mobile wallpaper below.
+        -->
+        <img
+          src="assets/bg.png"
+          alt=""
+          aria-hidden="true"
+          class="absolute inset-0 hidden size-full object-cover sm:block"
+        />
+        <!--
+          Lock screen background photo (phone).
+          Shown only below Tailwind's `sm` breakpoint (roughly
+          phone-width viewports, including opening the site "as a
+          device" on a phone). Upload a new image as
+          assets/bg-mobile.png to replace it, or edit the src below.
+        -->
+        <img
+          src="assets/bg-mobile.jpg"
+          alt=""
+          aria-hidden="true"
+          class="absolute inset-0 block size-full object-cover sm:hidden"
+        />
+        <!-- Soft overlay so the form stays readable over the photo -->
+        <div
+          aria-hidden="true"
+          class="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/60"
+        ></div>
+
+        <form
+          x-on:submit.prevent="submitPassword()"
+          class="relative w-full max-w-sm overflow-hidden rounded-xl bg-white/10 p-8 shadow-2xl backdrop-blur-md"
+        >
+          <div
+            aria-hidden="true"
+            class="absolute -top-20 -left-20 size-48 rounded-full bg-black-500 blur-2xl"
+          ></div>
+          <div
+            aria-hidden="true"
+            class="absolute -top-10 -right-10 size-64 rounded-full bg-black-300 blur-3xl"
+          ></div>
+          <div
+            aria-hidden="true"
+            class="absolute inset-0 bg-yellow-100/20 backdrop-blur-sm dark:bg-black-900/25"
+          ></div>
+
+          <div class="relative">
+            <h1 class="text-2xl font-medium text-black drop-shadow-sm dark:text-white">
+              MOON 
+            </h1>
+            <p class="mt-2 text-sm text-zinc-800 drop-shadow-sm dark:text-zinc-200">
+              What i always say you ?
+            </p>
+
+            <input
+              type="password"
+              x-model="passwordInput"
+              x-on:input="passwordError = false"
+              placeholder="Password"
+              autocomplete="off"
+              autofocus
+              class="mt-6 w-full rounded-lg border border-white/30 bg-white/20 px-4 py-2.5 text-zinc-900 placeholder-zinc-600 outline-none backdrop-blur-sm focus:border-yellow-600 focus:ring-2 focus:ring-yellow-500/40 dark:border-white/10 dark:bg-zinc-950/30 dark:text-white dark:placeholder-zinc-400"
+            />
+
+            <p
+              x-cloak
+              x-show="passwordError"
+              class="mt-2 text-sm font-medium text-red-600 dark:text-red-400"
+            >
+              Wrong password, ask your Boyfriend.
+            </p>
+
+            <button
+              type="submit"
+              x-bind:disabled="checking"
+              class="mt-4 w-full rounded-lg bg-zinc-900 px-4 py-2.5 font-medium text-white transition hover:bg-zinc-800 active:opacity-80 disabled:opacity-60 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              <span x-show="!checking">Unlock</span>
+              <span x-show="checking">Checking…</span>
+            </button>
+          </div>
+        </form>
+      </div>
+      <!-- END Password Gate -->
+
+      <!-- Special-Day Decorations (only render on 3 Sep birthday / 10 Dec anniversary) -->
+      <div
+        x-cloak
+        x-show="unlocked && isBirthdayToday"
+        class="decor-layer"
+        aria-hidden="true"
+      >
+        <template x-for="b in balloons" :key="b.id">
+          <div
+            class="balloon"
+            :style="`left:${b.left}%; color:${b.color}; background:${b.color}; animation-duration:${b.duration}s; animation-delay:${b.delay}s;`"
+          ></div>
+        </template>
+        <template x-for="c in confetti" :key="'bconf-' + c.id">
+          <div
+            class="confetti-piece"
+            :style="`left:${c.left}%; background:${c.color}; animation-duration:${c.duration}s; animation-delay:${c.delay}s;`"
+          ></div>
+        </template>
+      </div>
+      <!-- END Special-Day Decorations (birthday) -->
+
+      <div
+        x-cloak
+        x-show="unlocked && isAnniversaryToday"
+        class="decor-layer"
+        aria-hidden="true"
+      >
+        <template x-for="h in hearts" :key="h.id">
+          <div
+            class="floating-heart"
+            :style="`left:${h.left}%; animation-duration:${h.duration}s; animation-delay:${h.delay}s;`"
+            x-text="h.glyph"
+          ></div>
+        </template>
+        <template x-for="c in confetti" :key="'aconf-' + c.id">
+          <div
+            class="confetti-piece"
+            :style="`left:${c.left}%; background:${c.color}; animation-duration:${c.duration}s; animation-delay:${c.delay}s;`"
+          ></div>
+        </template>
+      </div>
+      <!-- END Special-Day Decorations (anniversary) -->
+
+      <!-- Page Content -->
+      <main
+        id="page-content"
+        x-cloak
+        x-show="unlocked"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        class="mx-auto flex max-w-6xl flex-auto flex-col px-4 pb-4 lg:px-8 lg:pb-8"
+      >
+        <!-- Main Header -->
+        <header
+          id="page-header"
+          class="flex flex-none items-center justify-between py-7"
+        >
+          <div class="flex items-center gap-2">
+            <!-- Logo -->
+            <a
+              href="text.html"
+              class="text-2xl font-thin tracking-widest hover:text-yellow-600 active:opacity-75 dark:hover:text-yellow-400"
+            >
+              MOON
+            </a>
+            <!-- END Logo -->
+
+            <!-- Toggle Dark Mode -->
+            <button
+              x-on:click="toggleDarkMode()"
+              type="button"
+              class="relative inline-flex size-9 items-center justify-center text-zinc-600 hover:text-yellow-600 dark:text-zinc-400"
+            >
+              <div
+                x-cloak
+                x-show="!darkMode"
+                x-transition:enter="transition ease-out duration-150"
+                x-transition:enter-start="opacity-0 rotate-180"
+                x-transition:enter-end="opacity-100 rotate-0"
+                x-transition:leave="transition ease-in duration-100"
+                x-transition:leave-start="opacity-100 rotate-0"
+                x-transition:leave-end="opacity-0 rotate-180"
+                class="absolute inset-0 flex items-center justify-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="hi-outline hi-sun inline-block size-5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
+                  />
+                </svg>
+              </div>
+              <div
+                x-cloak
+                x-show="darkMode"
+                x-transition:enter="transition ease-out duration-150"
+                x-transition:enter-start="opacity-0 rotate-180"
+                x-transition:enter-end="opacity-100 rotate-0"
+                x-transition:leave="transition ease-in duration-100"
+                x-transition:leave-start="opacity-100 rotate-0"
+                x-transition:leave-end="opacity-0 rotate-180"
+                class="absolute inset-0 flex items-center justify-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  class="hi-outline hi-moon inline-block size-5"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"
+                  />
+                </svg>
+              </div>
+            </button>
+            <!-- END Toggle Dark Mode -->
+          </div>
+          <div class="flex items-center gap-4">
+            <!-- Nav -->
+            <nav class="flex items-center gap-6">
+            </nav>
+            <!-- END Nav -->
+          </div>
+        </header>
+        <!-- END Main Header -->
+
+        <!-- Special-Day Banner -->
+        <div
+          x-cloak
+          x-show="isBirthdayToday"
+          class="mb-6 flex flex-none items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 via-red-500 to-orange-400 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg sm:text-base"
+        >
+          🎉🎈 Happy Birthday, Ashifa! Today is all about you. 🎈🎉
+        </div>
+        <div
+          x-cloak
+          x-show="isAnniversaryToday"
+          class="mb-6 flex flex-none items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg sm:text-base"
+        >
+          💍💕 Happy Anniversary to us! Still choosing you, every single day. 💕💍
+        </div>
+        <!-- END Special-Day Banner -->
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-12">
+          <!-- Photo -->
+          <div class="col-span-1 md:col-span-5">
+            <button
+              type="button"
+              x-on:click="timerOpen = true"
+              aria-label="See how long we've been together"
+              class="group relative block w-full cursor-pointer overflow-hidden rounded-xl"
+            >
+              <img
+                src="assets/photo.jpeg"
+                alt="Photo"
+                class="rounded-xl object-cover w-full aspect-square transition duration-200 ease-out group-hover:scale-105 group-hover:brightness-90"
+              />
+              <span
+                class="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/50 via-transparent to-transparent p-4 opacity-0 transition duration-200 group-hover:opacity-100"
+              >
+                <span class="text-sm font-medium text-white">Tap to see our time together</span>
+              </span>
+            </button>
+          </div>
+          <!-- END Photo -->
+
+          <!-- Intro -->
+          <div
+            class="relative col-span-1 flex flex-col overflow-hidden rounded-xl bg-zinc-100 p-12 md:col-span-7 dark:bg-zinc-900"
+          >
+            <div
+              aria-hidden="true"
+              class="absolute -top-20 -left-20 size-48 rounded-full bg-yellow-500 blur-2xl"
+            ></div>
+            <div
+              aria-hidden="true"
+              class="absolute -top-10 -right-10 size-64 rounded-full bg-orange-300 blur-3xl"
+            ></div>
+            <div
+              aria-hidden="true"
+              class="absolute inset-0 bg-yellow-100/50 backdrop-blur-md dark:bg-yellow-900/75"
+            ></div>
+            <div class="relative mt-auto">
+              <h1 class="text-4xl font-medium text-black dark:text-white">
+                Hi there, I'm Ashifa!
+              </h1>
+              <h2 class="mt-3 leading-relaxed text-zinc-900 dark:text-zinc-200">
+                When someone asks me who my favorite person is, there's only one face that comes to mind—hers. We first met back in 11th grade. She was the kind of girl who quietly minded her own business, unbelievably innocent, and completely unaware of how special she was. To be honest, I didn't think she was the most beautiful girl when I first saw her. But now? Now I catch myself wondering, *"Could there ever be anyone more beautiful than her?"* And every single time, the answer is the same—no.
+                To me, she's the most beautiful girl in the world.
+                She's the one I'm terrified of losing.
+                She's the one whose slightest touch makes my heart forget how to behave.
+                Well...
+                Meet the one and only—
+                ASHIFA❤️
+              </h2>
+            </div>
+          </div>
+          <!-- END Intro -->
+          
+          <!-- Projects -->
+          <a
+            id="projects"
+            href="pro.html"
+            class="group relative col-span-1 overflow-hidden rounded-xl bg-zinc-100 p-6 hover:bg-zinc-200/75 active:bg-zinc-200 md:col-span-4 dark:bg-zinc-900 dark:hover:bg-yellow-900/15 dark:active:bg-zinc-800"
+          >
+            <div
+              class="absolute top-6 right-6 scale-0 opacity-0 transition duration-75 ease-out group-hover:scale-100 group-hover:opacity-100"
+              aria-hidden="true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="hi-solid hi-arrow-small-right inline-block size-6"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M3.75 12a.75.75 0 0 1 .75-.75h13.19l-5.47-5.47a.75.75 0 0 1 1.06-1.06l6.75 6.75a.75.75 0 0 1 0 1.06l-6.75 6.75a.75.75 0 1 1-1.06-1.06l5.47-5.47H4.5a.75.75 0 0 1-.75-.75Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-zinc-950 dark:text-zinc-50">
+              Your folder            </h3>
+            <h4 class="text-sm text-zinc-600 dark:text-zinc-400">Add New </h4>
+            <div
+              class="mt-10 transition duration-150 ease-out group-hover:scale-105"
+            >
+              <img
+                src="assets/wallet.jpg"
+                style="filter: invert(100%)"
+                alt="Project 1"
+                class="rounded-xl object-contain w-full aspect-square"
+              />
+            </div>
+          </a>
+          <a
+            id="projects"
+            href="instants.html"
+            class="group relative col-span-1 overflow-hidden rounded-xl bg-zinc-100 p-6 hover:bg-zinc-200/75 active:bg-zinc-200 md:col-span-4 dark:bg-zinc-900 dark:hover:bg-yellow-900/15 dark:active:bg-zinc-800"
+          >
+            <div
+              class="absolute top-6 right-6 scale-0 opacity-0 transition duration-75 ease-out group-hover:scale-100 group-hover:opacity-100"
+              aria-hidden="true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="hi-solid hi-arrow-small-right inline-block size-6"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M3.75 12a.75.75 0 0 1 .75-.75h13.19l-5.47-5.47a.75.75 0 0 1 1.06-1.06l6.75 6.75a.75.75 0 0 1 0 1.06l-6.75 6.75a.75.75 0 1 1-1.06-1.06l5.47-5.47H4.5a.75.75 0 0 1-.75-.75Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-zinc-950 dark:text-zinc-50">
+              Movments
+            </h3>
+            <h4 class="text-sm text-zinc-600 dark:text-zinc-400">Uploade your beauty</h4>
+            <div
+              class="mt-10 transition duration-150 ease-out group-hover:scale-105"
+            >
+              <img
+                src="assets/moonn.png"
+                alt="Project 2"
+                class="rounded-xl object-contain w-full aspect-square"
+              />
+            </div>
+          </a>
+          <a
+            id="projects"
+            href="our1.html"
+            class="group relative col-span-1 overflow-hidden rounded-xl bg-zinc-100 p-6 hover:bg-zinc-200/75 active:bg-zinc-200 md:col-span-4 dark:bg-zinc-900 dark:hover:bg-yellow-900/15 dark:active:bg-zinc-800"
+          >
+            <div
+              class="absolute top-6 right-6 scale-0 opacity-0 transition duration-75 ease-out group-hover:scale-100 group-hover:opacity-100"
+              aria-hidden="true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="hi-solid hi-arrow-small-right inline-block size-6"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M3.75 12a.75.75 0 0 1 .75-.75h13.19l-5.47-5.47a.75.75 0 0 1 1.06-1.06l6.75 6.75a.75.75 0 0 1 0 1.06l-6.75 6.75a.75.75 0 1 1-1.06-1.06l5.47-5.47H4.5a.75.75 0 0 1-.75-.75Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-zinc-950 dark:text-zinc-50">
+              First date
+            </h3>
+            <h4 class="text-sm text-zinc-600 dark:text-zinc-400">Click to view</h4>
+            <div
+              class="mt-10 transition duration-150 ease-out group-hover:scale-105"
+            >
+              <img
+                src="assets/project1.jpeg"
+                alt="Project 1"
+                class="rounded-xl object-contain w-full aspect-square"
+              />
+            </div>
+          </a>
+          <a
+            id="projects"
+            href="our2.html"
+            class="group relative col-span-1 overflow-hidden rounded-xl bg-zinc-100 p-6 hover:bg-zinc-200/75 active:bg-zinc-200 md:col-span-4 dark:bg-zinc-900 dark:hover:bg-yellow-900/15 dark:active:bg-zinc-800"
+          >
+            <div
+              class="absolute top-6 right-6 scale-0 opacity-0 transition duration-75 ease-out group-hover:scale-100 group-hover:opacity-100"
+              aria-hidden="true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="hi-solid hi-arrow-small-right inline-block size-6"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M3.75 12a.75.75 0 0 1 .75-.75h13.19l-5.47-5.47a.75.75 0 0 1 1.06-1.06l6.75 6.75a.75.75 0 0 1 0 1.06l-6.75 6.75a.75.75 0 1 1-1.06-1.06l5.47-5.47H4.5a.75.75 0 0 1-.75-.75Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-zinc-950 dark:text-zinc-50">
+              Second date
+            </h3>
+            <h4 class="text-sm text-zinc-600 dark:text-zinc-400">click to view</h4>
+            <div
+              class="mt-10 transition duration-150 ease-out group-hover:scale-105"
+            >
+              <img
+                src="assets/project2.jpeg"
+                alt="Project 2"
+                class="rounded-xl object-contain w-full aspect-square"
+              />
+            </div>
+          </a>
+          <a
+            id="projects"
+            href="our3.html"
+            class="group relative col-span-1 overflow-hidden rounded-xl bg-zinc-100 p-6 hover:bg-zinc-200/75 active:bg-zinc-200 md:col-span-4 dark:bg-zinc-900 dark:hover:bg-yellow-900/15 dark:active:bg-zinc-800"
+          >
+            <div
+              class="absolute top-6 right-6 scale-0 opacity-0 transition duration-75 ease-out group-hover:scale-100 group-hover:opacity-100"
+              aria-hidden="true"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="hi-solid hi-arrow-small-right inline-block size-6"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M3.75 12a.75.75 0 0 1 .75-.75h13.19l-5.47-5.47a.75.75 0 0 1 1.06-1.06l6.75 6.75a.75.75 0 0 1 0 1.06l-6.75 6.75a.75.75 0 1 1-1.06-1.06l5.47-5.47H4.5a.75.75 0 0 1-.75-.75Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </div>
+            <h3 class="text-lg font-medium text-zinc-950 dark:text-zinc-50">
+              Third date
+            </h3>
+            <h4 class="text-sm text-zinc-600 dark:text-zinc-400">click to view</h4>
+            <div
+              class="mt-10 transition duration-150 ease-out group-hover:scale-105"
+            >
+              <img
+                src="assets/project3.jpeg"
+                alt="Project 3"
+                class="rounded-xl object-contain w-full aspect-square"
+              />
+            </div>
+          </a>
+          
+          <!-- END Projects -->
+
+          
+
+          <!-- Footer -->
+          <footer
+            class="flex flex-col gap-6 py-7 text-center text-sm md:col-span-12 md:flex-row-reverse md:justify-between md:gap-0 md:text-left"
+          >
+            <nav class="flex items-center justify-center gap-4">
+              
+            </nav>
+            <div class="text-zinc-500 dark:text-zinc-400/80">
+              <span class="font-medium">MOON</span> ©
+              <span x-text="new Date().getFullYear()"></span>
+              <p>All right reserved by <a href="" target="_blank" class="font-bold">Moon</a></p>
+            </div>
+          </footer>
+          <!-- END Footer -->
+        </div>
+        <!-- END Main Content -->
+      </main>
+      <!-- END Page Content -->
+
+      <!-- Love Letter Notification Bubble -->
+      <button
+        x-cloak
+        x-show="unlocked && !letterOpen"
+        x-on:click="letterOpen = true"
+        type="button"
+        aria-label="Open love letter"
+        class="letter-bubble fixed bottom-5 left-5 z-40 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-2xl shadow-lg shadow-orange-500/30 transition hover:scale-105 active:scale-95 sm:bottom-6 sm:left-6"
+      >
+        <span aria-hidden="true">🌏</span>
+        <span
+          aria-hidden="true"
+          class="absolute -top-0.5 -right-0.5 flex size-3.5"
+        >
+          <span
+            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"
+          ></span>
+          <span
+            class="relative inline-flex size-3.5 rounded-full bg-red-500"
+          ></span>
+        </span>
+      </button>
+      <!-- END Love Letter Notification Bubble -->
+
+      <!-- Love Letter Modal -->
+      <div
+        x-cloak
+        x-show="letterOpen"
+        x-on:keydown.escape.window="letterOpen = false"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      >
+        <!-- Click outside to close -->
+        <div class="absolute inset-0" x-on:click="letterOpen = false"></div>
+
+        <div class="relative w-full max-w-md">
+          <!-- Close -->
+          <button
+            type="button"
+            x-on:click="letterOpen = false"
+            aria-label="Roll the letter back up"
+            class="absolute -top-12 right-0 text-sm font-medium text-zinc-200 hover:text-yellow-400"
+          >
+            Close ✕
+          </button>
+
+          <!-- The scroll -->
+          <div
+            x-show="letterOpen"
+            x-transition:enter="transition-all duration-500 ease-out"
+            x-transition:enter-start="opacity-0 scale-y-0"
+            x-transition:enter-end="opacity-100 scale-y-100"
+            x-transition:leave="transition-all duration-300 ease-in"
+            x-transition:leave-start="opacity-100 scale-y-100"
+            x-transition:leave-end="opacity-0 scale-y-0"
+            style="transform-origin: top center;"
+            class="relative"
+          >
+            <!-- Top dowel -->
+            <div
+              class="relative z-10 h-4 rounded-full bg-gradient-to-r from-amber-800 via-amber-500 to-amber-800 shadow-md"
+            ></div>
+
+            <!-- Paper -->
+            <div
+              class="relative -mt-1 -mb-1 max-h-[75dvh] overflow-y-auto bg-[#fdf6e3] px-7 py-8 shadow-2xl sm:px-10 sm:py-10"
+            >
+              <!-- Photo, taped in like a keepsake -->
+              <div class="mx-auto mb-6 w-40 rotate-[-3deg] bg-white p-2 pb-4 shadow-md sm:w-44">
+                <div
+                  aria-hidden="true"
+                  class="absolute left-1/2 -top-3 h-6 w-16 -translate-x-1/2 -rotate-2 bg-yellow-200/70"
+                  style="clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);"
+                ></div>
+                <img
+                  src="https://static.vecteezy.com/system/resources/thumbnails/007/070/723/small/hand-drawn-long-distance-relationship-icon-concept-illustration-vector.jpg"
+                  alt="Our photo"
+                  class="aspect-square w-full rounded-sm object-cover"
+                />
+              </div>
+
+              <!-- Handwritten note -->
+              <div
+                style="font-family: 'Caveat', cursive;"
+                class="text-center text-[#4a3520]"
+              >
+                <p class="text-2xl leading-snug sm:text-[26px]">
+                  My dearest Ashifa,
+                </p>
+                <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
+                 Tuje lag rha hoga mea tuje haidrabad nhi jane dena chahta but aisa nhi h mea chata hu ki tu kahi bhi jaye aur jake khoob mahnat kare padai kare ... muje nhi chaiye ki tu sirf mujse hu chipi rahe uska jab time ayega tab kar lenge hnesha chipke rahege lekin muje pata h abhi hmari priority hmari study honi chahiye aur uske liye tu agr america bhi jati to bhi muje koi problem nahi hoti .. hn mea tuje khone se darta hu lekin muje tujper vishwas h ki tu sirf meri h aur rahegi... mea tere papa ki bohot izzat karta hu ... unhke liye khudke liye aur hmare liye tu jo bhi karna chahegi hm sab me sath rahenge.. lekin yaad rakhio tu 4 nhi 40 saal baad bhii aye to bhi sirf aur sirf meri ho aur uske baad kabhi na jaaye muje chor kar ye 4 saal hm dono survive kar lenge taki baad me survive na kare enjoy kare ... hope hn enjoy kar payenge sath me ... ahh ke liye buss itna hiii .. bieeeee 
+                </p>
+                <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
+                  Thank you for being exactly who you are. I don't say it
+                  enough, so let this be the proof, saved somewhere it can't
+                  be forgotten.
+                </p>
+                <p class="mt-6 text-2xl sm:text-[26px]">
+                  Forever yours,<br />Moon 🌙
+                </p>
+              </div>
+            </div>
+
+            <!-- Bottom dowel -->
+            <div
+              class="relative z-10 h-4 rounded-full bg-gradient-to-r from-amber-800 via-amber-500 to-amber-800 shadow-md"
+            ></div>
+          </div>
+        </div>
+      </div>
+      <!-- END Love Letter Modal -->
+
+      <!-- Birthday Letter Notification Bubble (only shows on 3 Sep) -->
+      <button
+        x-cloak
+        x-show="unlocked && isBirthdayToday && !birthdayLetterOpen"
+        x-on:click="birthdayLetterOpen = true"
+        type="button"
+        aria-label="Open birthday letter"
+        class="letter-bubble fixed bottom-5 left-24 z-40 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-red-500 text-2xl shadow-lg shadow-pink-500/30 transition hover:scale-105 active:scale-95 sm:bottom-6 sm:left-28"
+      >
+        <span aria-hidden="true">🎂</span>
+      </button>
+      <!-- END Birthday Letter Notification Bubble -->
+
+      <!-- Birthday Letter Modal -->
+      <div
+        x-cloak
+        x-show="birthdayLetterOpen"
+        x-on:keydown.escape.window="birthdayLetterOpen = false"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      >
+        <!-- Click outside to close -->
+        <div class="absolute inset-0" x-on:click="birthdayLetterOpen = false"></div>
+
+        <div class="relative w-full max-w-md">
+          <!-- Close -->
+          <button
+            type="button"
+            x-on:click="birthdayLetterOpen = false"
+            aria-label="Roll the letter back up"
+            class="absolute -top-12 right-0 text-sm font-medium text-zinc-200 hover:text-yellow-400"
+          >
+            Close ✕
+          </button>
+
+          <!-- The scroll -->
+          <div
+            x-show="birthdayLetterOpen"
+            x-transition:enter="transition-all duration-500 ease-out"
+            x-transition:enter-start="opacity-0 scale-y-0"
+            x-transition:enter-end="opacity-100 scale-y-100"
+            x-transition:leave="transition-all duration-300 ease-in"
+            x-transition:leave-start="opacity-100 scale-y-100"
+            x-transition:leave-end="opacity-0 scale-y-0"
+            style="transform-origin: top center;"
+            class="relative"
+          >
+            <!-- Top dowel -->
+            <div
+              class="relative z-10 h-4 rounded-full bg-gradient-to-r from-pink-700 via-pink-400 to-pink-700 shadow-md"
+            ></div>
+
+            <!-- Paper -->
+            <div
+              class="relative -mt-1 -mb-1 max-h-[75dvh] overflow-y-auto bg-[#fff5f7] px-7 py-8 shadow-2xl sm:px-10 sm:py-10"
+            >
+              <!-- Photo, taped in like a keepsake -->
+              <div class="mx-auto mb-6 w-40 rotate-[3deg] bg-white p-2 pb-4 shadow-md sm:w-44">
+                <div
+                  aria-hidden="true"
+                  class="absolute left-1/2 -top-3 h-6 w-16 -translate-x-1/2 rotate-2 bg-pink-200/70"
+                  style="clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);"
+                ></div>
+                <img
+                  src="assets/photo.jpeg"
+                  alt="Our photo"
+                  class="aspect-square w-full rounded-sm object-cover"
+                />
+              </div>
+
+              <!-- Handwritten note -->
+              <div
+                style="font-family: 'Caveat', cursive;"
+                class="text-center text-[#5a2340]"
+              >
+                <p class="text-2xl leading-snug sm:text-[26px]">
+                  Happy Birthday, my Ashifa 🎂
+                </p>
+                <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
+                  Today the whole world should know what I already do — that
+                  there's no one quite like you. Another year older, and
+                  somehow even more beautiful, more kind, more everything
+                  that makes me fall for you all over again.
+                </p>
+                <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
+                  I hope this year brings you every little thing you've been
+                  quietly hoping for — and I hope you know that whatever it
+                  brings, I'll be right here, cheering you on louder than
+                  anyone.
+                </p>
+                <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
+                  Happiest birthday, my favorite person. Go be brilliant.
+                </p>
+                <p class="mt-6 text-2xl sm:text-[26px]">
+                  Always yours,<br />Moon 🌙
+                </p>
+              </div>
+            </div>
+
+            <!-- Bottom dowel -->
+            <div
+              class="relative z-10 h-4 rounded-full bg-gradient-to-r from-pink-700 via-pink-400 to-pink-700 shadow-md"
+            ></div>
+          </div>
+        </div>
+      </div>
+      <!-- END Birthday Letter Modal -->
+
+      <!-- Anniversary Letter Notification Bubble (only shows on 10 Dec) -->
+      <button
+        x-cloak
+        x-show="unlocked && isAnniversaryToday && !anniversaryLetterOpen"
+        x-on:click="anniversaryLetterOpen = true"
+        type="button"
+        aria-label="Open anniversary letter"
+        class="letter-bubble fixed bottom-5 left-24 z-40 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-rose-400 to-amber-500 text-2xl shadow-lg shadow-rose-500/30 transition hover:scale-105 active:scale-95 sm:bottom-6 sm:left-28"
+      >
+        <span aria-hidden="true">💌</span>
+      </button>
+      <!-- END Anniversary Letter Notification Bubble -->
+
+      <!-- Anniversary Letter Modal -->
+      <div
+        x-cloak
+        x-show="anniversaryLetterOpen"
+        x-on:keydown.escape.window="anniversaryLetterOpen = false"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      >
+        <!-- Click outside to close -->
+        <div class="absolute inset-0" x-on:click="anniversaryLetterOpen = false"></div>
+
+        <div class="relative w-full max-w-md">
+          <!-- Close -->
+          <button
+            type="button"
+            x-on:click="anniversaryLetterOpen = false"
+            aria-label="Roll the letter back up"
+            class="absolute -top-12 right-0 text-sm font-medium text-zinc-200 hover:text-yellow-400"
+          >
+            Close ✕
+          </button>
+
+          <!-- The scroll -->
+          <div
+            x-show="anniversaryLetterOpen"
+            x-transition:enter="transition-all duration-500 ease-out"
+            x-transition:enter-start="opacity-0 scale-y-0"
+            x-transition:enter-end="opacity-100 scale-y-100"
+            x-transition:leave="transition-all duration-300 ease-in"
+            x-transition:leave-start="opacity-100 scale-y-100"
+            x-transition:leave-end="opacity-0 scale-y-0"
+            style="transform-origin: top center;"
+            class="relative"
+          >
+            <!-- Top dowel -->
+            <div
+              class="relative z-10 h-4 rounded-full bg-gradient-to-r from-rose-800 via-rose-500 to-rose-800 shadow-md"
+            ></div>
+
+            <!-- Paper -->
+            <div
+              class="relative -mt-1 -mb-1 max-h-[75dvh] overflow-y-auto bg-[#fdf6e3] px-7 py-8 shadow-2xl sm:px-10 sm:py-10"
+            >
+              <!-- Photo, taped in like a keepsake -->
+              <div class="mx-auto mb-6 w-40 rotate-[-3deg] bg-white p-2 pb-4 shadow-md sm:w-44">
+                <div
+                  aria-hidden="true"
+                  class="absolute left-1/2 -top-3 h-6 w-16 -translate-x-1/2 -rotate-2 bg-rose-200/70"
+                  style="clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);"
+                ></div>
+                <img
+                  src="assets/aug.png"
+                  alt="Our photo"
+                  class="aspect-square w-full rounded-sm object-cover"
+                />
+              </div>
+
+              <!-- Handwritten note -->
+              <div
+                style="font-family: 'Caveat', cursive;"
+                class="text-center text-[#4a3520]"
+              >
+                <p class="text-2xl leading-snug sm:text-[26px]">
+                  Happy Anniversary, my Ashifa 💍
+                </p>
+                <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
+                  Another year since that day — 10 Dec, 2:15 PM — the moment
+                  that quietly became the start of everything. I still think
+                  about it more than you'd guess.
+                </p>
+                <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
+                  Every season with you has taught me something new about
+                  what it means to love someone properly — patiently,
+                  honestly, and without ever wanting to be anywhere else.
+                </p>
+                <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
+                  Here's to the years already behind us, and to every one
+                  still waiting for us. I'd choose you again, every single
+                  time.
+                </p>
+                <p class="mt-6 text-2xl sm:text-[26px]">
+                  Forever yours,<br />Moon 🌙
+                </p>
+              </div>
+            </div>
+
+            <!-- Bottom dowel -->
+            <div
+              class="relative z-10 h-4 rounded-full bg-gradient-to-r from-rose-800 via-rose-500 to-rose-800 shadow-md"
+            ></div>
+          </div>
+        </div>
+      </div>
+      <!-- END Anniversary Letter Modal -->
+
+      <!-- Time Together Modal -->
+      <div
+        x-cloak
+        x-show="timerOpen"
+        x-on:keydown.escape.window="timerOpen = false"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      >
+        <!-- Click outside to close -->
+        <div class="absolute inset-0" x-on:click="timerOpen = false"></div>
+
+        <div
+          x-show="timerOpen"
+          x-transition:enter="transition-all duration-300 ease-out"
+          x-transition:enter-start="opacity-0 scale-95"
+          x-transition:enter-end="opacity-100 scale-100"
+          x-transition:leave="transition-all duration-150 ease-in"
+          x-transition:leave-start="opacity-100 scale-100"
+          x-transition:leave-end="opacity-0 scale-95"
+          class="relative w-full max-w-lg overflow-hidden rounded-xl bg-white p-8 shadow-2xl dark:bg-zinc-900"
+        >
+          <!-- Close -->
+          <button
+            type="button"
+            x-on:click="timerOpen = false"
+            aria-label="Close"
+            class="absolute top-4 right-4 text-zinc-400 hover:text-yellow-600 dark:hover:text-yellow-400"
+          >
+            ✕
+          </button>
+
+          <div
+            aria-hidden="true"
+            class="absolute -top-20 -left-20 size-48 rounded-full bg-yellow-500 blur-2xl"
+          ></div>
+          <div
+            aria-hidden="true"
+            class="absolute -top-10 -right-10 size-64 rounded-full bg-orange-300 blur-3xl"
+          ></div>
+          <div
+            aria-hidden="true"
+            class="absolute inset-0 bg-yellow-100/50 backdrop-blur-md dark:bg-yellow-900/75"
+          ></div>
+
+          <div class="relative text-center">
+            <h2 class="text-2xl font-medium text-black dark:text-white">
+              Us, since 10 Dec 2023, 2:15 PM 🌙
+            </h2>
+            <p class="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+              And still counting...
+            </p>
+
+            <div class="mt-6 grid grid-cols-3 gap-3">
+              <div class="rounded-lg bg-white/60 py-4 dark:bg-zinc-950/40">
+                <div class="text-2xl font-semibold text-zinc-900 dark:text-white" x-text="timeTogether.years"></div>
+                <div class="text-xs text-zinc-600 dark:text-zinc-400">Years</div>
+              </div>
+              <div class="rounded-lg bg-white/60 py-4 dark:bg-zinc-950/40">
+                <div class="text-2xl font-semibold text-zinc-900 dark:text-white" x-text="timeTogether.months"></div>
+                <div class="text-xs text-zinc-600 dark:text-zinc-400">Months</div>
+              </div>
+              <div class="rounded-lg bg-white/60 py-4 dark:bg-zinc-950/40">
+                <div class="text-2xl font-semibold text-zinc-900 dark:text-white" x-text="timeTogether.days"></div>
+                <div class="text-xs text-zinc-600 dark:text-zinc-400">Days</div>
+              </div>
+              <div class="rounded-lg bg-white/60 py-4 dark:bg-zinc-950/40">
+                <div class="text-2xl font-semibold text-zinc-900 dark:text-white" x-text="timeTogether.hours"></div>
+                <div class="text-xs text-zinc-600 dark:text-zinc-400">Hours</div>
+              </div>
+              <div class="rounded-lg bg-white/60 py-4 dark:bg-zinc-950/40">
+                <div class="text-2xl font-semibold text-zinc-900 dark:text-white" x-text="timeTogether.minutes"></div>
+                <div class="text-xs text-zinc-600 dark:text-zinc-400">Minutes</div>
+              </div>
+              <div class="rounded-lg bg-white/60 py-4 dark:bg-zinc-950/40">
+                <div class="text-2xl font-semibold text-zinc-900 dark:text-white" x-text="timeTogether.seconds"></div>
+                <div class="text-xs text-zinc-600 dark:text-zinc-400">Seconds</div>
+              </div>
+            </div>
+
+            <p class="mt-6 text-sm text-zinc-700 dark:text-zinc-300">
+              Every second of it, worth it. ❤️
+            </p>
+          </div>
+        </div>
+      </div>
+      <!-- END Time Together Modal -->
+    </div>
+    <!-- END Page Container -->
+  </body>
+</html>
+

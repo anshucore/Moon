@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Wall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,500&family=Caveat:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall:#e8adee;
+    --wall-2:#c255e4;
+    --paper:#6b0a6b;
+    --paper-shadow:rgba(196, 44, 44, 0.35);
+    --ink:#2a251d;
+    --ink-soft:#060007;
+    --gold:#e6e6e6;
+    --gold-dark:#ffffff;
+    --sage:#ffffff;
+    --sage-dark:#516a5c;
+    --muted:#000000;
+    --danger:#b5573f;
+    --line: rgba(250,245,232,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at 20% 0%, var(--wall-2), var(--wall) 60%);
+    color:var(--paper);
+    font-family:'Work Sans', sans-serif;
+    min-height:100vh;
+    padding-bottom:80px;
+  }
+  .grain{
+    position:fixed; inset:0; pointer-events:none; opacity:0.05; z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  header{
+    position:relative; z-index:1;
+    max-width:1100px; margin:0 auto; padding:56px 32px 24px;
+    text-align:center;
+  }
+  header .eyebrow{
+    font-size:12px; letter-spacing:0.22em; text-transform:uppercase;
+    color:var(--gold); margin:0 0 10px;
+  }
+  header h1{
+    font-family:'Fraunces', serif; font-weight:600;
+    font-size:clamp(36px,6vw,58px); margin:0; color:var(--paper);
+    letter-spacing:-0.01em;
+  }
+  header p.sub{
+    font-family:'Fraunces', serif; font-style:italic; font-weight:400;
+    color:white(--muted); font-size:17px; margin:14px auto 0; max-width:440px;
+  }
+  .count{
+    font-size:13px; color:var(--muted); margin-top:18px;
+  }
+
+  main{ max-width:1100px; margin:0 auto; padding:20px 32px; position:relative; z-index:1;}
+
+  .board{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
+    gap:34px 28px;
+    align-items:start;
+  }
+
+  .card{
+    background:var(--paper);
+    padding:14px 14px 18px;
+    box-shadow:0 10px 24px var(--paper-shadow), 0 1px 0 rgba(255,255,255,0.4) inset;
+    position:relative;
+    color:var(--ink);
+  }
+  .card .pin{
+    position:absolute; top:-11px; left:50%; transform:translateX(-50%);
+    width:16px; height:16px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #e9c874, var(--gold-dark));
+    box-shadow:0 3px 5px rgba(0,0,0,0.4);
+    z-index:2;
+  }
+  .card .photo-wrap{
+    background:#e9e3d4; overflow:hidden; position:relative;
+  }
+  .card img{
+    display:block; width:100%; height:auto;
+  }
+  .photo-wrap.locked img{
+    filter:blur(22px) saturate(1.1);
+    transform:scale(1.08);
+    transition:filter 0.3s ease;
+  }
+  .lock-overlay{
+    position:absolute; inset:0; z-index:3;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; padding:16px; text-align:center;
+    background:rgba(0,0,0,0.18);
+    color:#fff;
+  }
+  .lock-overlay .lock-icon{ font-size:26px; }
+  .lock-overlay .lock-label{
+    font-size:12px; letter-spacing:0.05em; text-transform:uppercase; opacity:0.9;
+  }
+  .lock-overlay form{ display:flex; gap:6px; margin-top:4px; }
+  .lock-overlay input[type="password"]{
+    width:96px; padding:6px 8px; border:none; border-radius:3px;
+    font-family:'Work Sans', sans-serif; font-size:14px; text-align:center;
+    letter-spacing:0.12em;
+  }
+  .lock-overlay button{
+    border:none; border-radius:3px; padding:6px 10px; cursor:pointer;
+    background:var(--gold-dark); color:var(--ink); font-size:13px;
+    font-family:'Work Sans', sans-serif; font-weight:500;
+  }
+  .lock-overlay button:hover{ opacity:0.85; }
+  .card .lock-toggle{
+    border:none; background:none; cursor:pointer; color:#b3a993;
+    font-size:11px; letter-spacing:0.03em; padding:2px 4px;
+    font-family:'Work Sans', sans-serif;
+  }
+  .card .lock-toggle:hover{ color:var(--gold-dark); }
+
+  .modal-backdrop{
+    position:fixed; inset:0; z-index:30; background:rgba(0,0,0,0.5);
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-backdrop.show{ display:flex; }
+  .modal-box{
+    background:var(--paper); color:var(--ink); padding:24px 22px;
+    max-width:320px; width:100%; box-shadow:0 14px 30px rgba(0,0,0,0.4);
+  }
+  .modal-box h3{
+    font-family:'Fraunces', serif; font-weight:600; margin:0 0 8px; font-size:19px;
+  }
+  .modal-box p{ font-size:13px; color:var(--ink-soft); margin:0 0 14px; line-height:1.4; }
+  .modal-box input[type="password"]{
+    width:100%; padding:9px 10px; border:1px solid rgba(0,0,0,0.15); border-radius:3px;
+    font-family:'Work Sans', sans-serif; font-size:15px; letter-spacing:0.08em;
+    margin-bottom:14px;
+  }
+  .modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
+  .modal-actions button{
+    border:none; border-radius:3px; padding:8px 14px; cursor:pointer;
+    font-family:'Work Sans', sans-serif; font-size:13px; font-weight:500;
+  }
+  .modal-actions .btn-skip{ background:transparent; color:var(--ink-soft); }
+  .modal-actions .btn-primary{ background:var(--gold-dark); color:var(--ink); }
+  .card textarea{
+    width:100%; border:none; background:transparent; resize:none;
+    font-family:'Caveat', cursive; font-size:22px; line-height:1.25;
+    color:white; margin-top:12px; padding:0 2px;
+    min-height:52px; outline:none;
+  }
+  .card textarea::placeholder{ color:#b3ab97; }
+  .card .meta{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:6px; padding:0 2px;
+  }
+  .card .date{ font-size:11px; color:var(--ink-soft); letter-spacing:0.03em; }
+  .card .del{
+    border:none; background:none; cursor:pointer; color:#b3a993;
+    font-size:11px; letter-spacing:0.03em; padding:2px 4px;
+    font-family:'Work Sans', sans-serif;
+  }
+  .card .del:hover{ color:var(--danger); }
+  .card .saving{ font-size:10px; color:#b3a993; }
+
+  .card:nth-child(3n+1){ transform:rotate(-1.6deg); }
+  .card:nth-child(3n+2){ transform:rotate(1.1deg); }
+  .card:nth-child(3n){ transform:rotate(-0.6deg); }
+  .card:hover{ transform:rotate(0deg) scale(1.015); transition:transform 0.2s ease; z-index:5; }
+
+  .add-slot{
+    border:2px dashed var(--line);
+    min-height:220px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer; text-align:center; padding:20px;
+    transition:border-color 0.15s ease, background 0.15s ease;
+    color:var(--muted);
+  }
+  .add-slot:hover, .add-slot.drag{
+    border-color:var(--gold); background:rgba(0, 0, 0, 0.06); color:var(--gold);
+  }
+  .add-slot .plus{
+    font-family:'Fraunces', serif; font-size:38px; line-height:1; margin-bottom:8px;
+  }
+  .add-slot .label{ font-size:14px; }
+  .add-slot .hint{ font-size:12px; margin-top:6px; color:var(--muted); }
+  .add-slot.uploading{ opacity:0.6; pointer-events:none; }
+
+  #file-input{ display:none; }
+
+  .empty{
+    text-align:center; padding:60px 20px; color:var(--muted);
+    font-family:'Fraunces', serif; font-style:italic; font-size:18px;
+  }
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--paper); color:var(--ink); padding:12px 20px;
+    font-size:14px; box-shadow:0 8px 20px rgba(0,0,0,0.35);
+    opacity:0; pointer-events:none; transition:all 0.25s ease; z-index:20;
+    max-width:80vw; text-align:center;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .loading{
+    text-align:center; padding:80px 20px; color:var(--muted);
+    font-family:'Fraunces', serif; font-style:italic; font-size:16px;
+  }
+
+  .card .photo-wrap img{ cursor:zoom-in; }
+
+  .lightbox{
+    position:fixed; inset:0; z-index:40; background:rgba(0,0,0,0.92);
+    display:none; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .lightbox.show{ display:flex; }
+  .lightbox-stage{
+    position:relative; max-width:min(92vw, 1100px); max-height:88vh;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+  .lightbox-stage img{
+    max-width:92vw; max-height:78vh; width:auto; height:auto;
+    box-shadow:0 20px 50px rgba(0,0,0,0.6);
+    background:#e9e3d4;
+  }
+  .lightbox-caption{
+    color:#f4f0e6; font-family:'Caveat', cursive; font-size:22px;
+    text-align:center; max-width:80vw; min-height:1.2em;
+  }
+  .lightbox-close{
+    position:absolute; top:-46px; right:0; background:none; border:none;
+    color:#f4f0e6; font-size:30px; line-height:1; cursor:pointer;
+    padding:4px 8px;
+  }
+  .lightbox-close:hover{ color:var(--gold); }
+  .lightbox-nav{
+    position:fixed; top:50%; transform:translateY(-50%);
+    background:rgba(255,255,255,0.08); border:none; color:#f4f0e6;
+    font-size:30px; line-height:1; width:52px; height:52px; border-radius:50%;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:background 0.15s ease;
+  }
+  .lightbox-nav:hover{ background:rgba(255,255,255,0.18); }
+  .lightbox-nav.prev{ left:16px; }
+  .lightbox-nav.next{ right:16px; }
+  .lightbox-counter{
+    color:#b3ab97; font-size:12px; letter-spacing:0.05em;
+  }
+  @media (max-width:600px){
+    .lightbox-nav{ width:42px; height:42px; font-size:24px; }
+    .lightbox-nav.prev{ left:6px; }
+    .lightbox-nav.next{ right:6px; }
+  }
+
+  @media (max-width:480px){
+    header{ padding:40px 20px 16px; }
+    main{ padding:12px 16px; }
+    .board{ gap:28px 18px; grid-template-columns:repeat(auto-fill, minmax(150px,1fr)); }
+    .card textarea{ font-size:19px; }
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<header>
+  <p class="eyebrow">A place for pictures and the words around them</p>
+  <h1>The Wall</h1>
+  <p class="sub">Pin up what you see. Write down what you remember.</p>
+  <p class="count" id="count"></p>
+</header>
+
+<main>
+  <div id="loading" class="loading">Unpinning the wall…</div>
+  <div class="board" id="board" style="display:none;"></div>
+</main>
+
+<input type="file" id="file-input" accept="image/*" multiple>
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="pin-modal">
+  <div class="modal-box">
+    <h3 id="pin-modal-title">Lock this photo?</h3>
+    <p id="pin-modal-desc">Set a PIN and others will only see a blurred photo until they enter it.</p>
+    <form id="pin-modal-form">
+      <input type="password" id="pin-modal-input" inputmode="numeric" placeholder="PIN (4+ digits)" autocomplete="off">
+      <div class="modal-actions">
+        <button type="button" class="btn-skip" id="pin-modal-skip">Skip</button>
+        <button type="submit" class="btn-primary" id="pin-modal-ok">Lock it</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="confirm-modal">
+  <div class="modal-box">
+    <h3 id="confirm-modal-title">Unpin this photo?</h3>
+    <p id="confirm-modal-desc">This will remove it from the wall for everyone. This can't be undone.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn-skip" id="confirm-modal-cancel">Cancel</button>
+      <button type="button" class="btn-primary" id="confirm-modal-ok" style="background:var(--danger); color:#fff;">Unpin</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button type="button" class="lightbox-nav prev" id="lightbox-prev" aria-label="Previous photo">&#8249;</button>
+  <div class="lightbox-stage">
+    <button type="button" class="lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
+    <img id="lightbox-img" src="" alt="Pinned photo, full screen">
+    <div class="lightbox-caption" id="lightbox-caption"></div>
+    <div class="lightbox-counter" id="lightbox-counter"></div>
+  </div>
+  <button type="button" class="lightbox-nav next" id="lightbox-next" aria-label="Next photo">&#8250;</button>
+</div>
+
+<!-- Supabase client library -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+
+  // ============================================================
+  // 1) FILL THESE IN with your own Supabase project's values.
+  //    Project Settings -> API -> Project URL / anon public key
+  // ============================================================
+  const SUPABASE_URL = 'https://qpeoldazjmctxaefdwni.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_dm8NgOu_Wt1f7ussG76qkw_ODaRW-1h';
+  const BUCKET = 'wall-photos';   // storage bucket name
+  const TABLE = 'photos';         // database table name
+  // ============================================================
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const board = document.getElementById('board');
+  const loading = document.getElementById('loading');
+  const fileInput = document.getElementById('file-input');
+  const toastEl = document.getElementById('toast');
+  const countEl = document.getElementById('count');
+  let entries = [];
+  const captionTimers = {};
+  const unlockedIds = new Set(); // photos this browser tab has unlocked this session
+
+  // ---- Pin helpers ----
+  async function sha256Hex(text){
+    const buf = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  const pinModal = document.getElementById('pin-modal');
+  const pinModalTitle = document.getElementById('pin-modal-title');
+  const pinModalDesc = document.getElementById('pin-modal-desc');
+  const pinModalForm = document.getElementById('pin-modal-form');
+  const pinModalInput = document.getElementById('pin-modal-input');
+  const pinModalSkip = document.getElementById('pin-modal-skip');
+  const pinModalOk = document.getElementById('pin-modal-ok');
+
+  // Generic "ask for a pin" dialog. mode: 'set' (skip allowed) or 'enter' (must submit a value).
+  function askForPin({ title, desc, okLabel, mode }){
+    return new Promise(resolve => {
+      pinModalTitle.textContent = title;
+      pinModalDesc.textContent = desc;
+      pinModalOk.textContent = okLabel;
+      pinModalSkip.style.display = mode === 'set' ? 'inline-block' : 'none';
+      pinModalInput.value = '';
+      pinModal.classList.add('show');
+      setTimeout(()=> pinModalInput.focus(), 30);
+
+      function cleanup(){
+        pinModal.classList.remove('show');
+        pinModalForm.removeEventListener('submit', onSubmit);
+        pinModalSkip.removeEventListener('click', onSkip);
+      }
+      function onSubmit(e){
+        e.preventDefault();
+        const val = pinModalInput.value.trim();
+        if(!val) return;
+        cleanup();
+        resolve(val);
+      }
+      function onSkip(){
+        cleanup();
+        resolve(null);
+      }
+      pinModalForm.addEventListener('submit', onSubmit);
+      pinModalSkip.addEventListener('click', onSkip);
+    });
+  }
+
+  const confirmModal = document.getElementById('confirm-modal');
+  const confirmModalTitle = document.getElementById('confirm-modal-title');
+  const confirmModalDesc = document.getElementById('confirm-modal-desc');
+  const confirmModalCancel = document.getElementById('confirm-modal-cancel');
+  const confirmModalOk = document.getElementById('confirm-modal-ok');
+
+  // Generic yes/no confirmation dialog. Resolves true if confirmed, false if cancelled.
+  function askConfirm({ title, desc, okLabel }){
+    return new Promise(resolve => {
+      confirmModalTitle.textContent = title;
+      confirmModalDesc.textContent = desc;
+      confirmModalOk.textContent = okLabel || 'Confirm';
+      confirmModal.classList.add('show');
+
+      function cleanup(){
+        confirmModal.classList.remove('show');
+        confirmModalOk.removeEventListener('click', onOk);
+        confirmModalCancel.removeEventListener('click', onCancel);
+      }
+      function onOk(){ cleanup(); resolve(true); }
+      function onCancel(){ cleanup(); resolve(false); }
+      confirmModalOk.addEventListener('click', onOk);
+      confirmModalCancel.addEventListener('click', onCancel);
+    });
+  }
+
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=> toastEl.classList.remove('show'), 2600);
+  }
+
+  function fmtDate(iso){
+    try{
+      const d = new Date(iso);
+      return d.toLocaleDateString(undefined, { month:'short', day:'numeric', year:'numeric' });
+    }catch(e){ return ''; }
+  }
+
+  // ---- Lightbox: fullscreen presentation mode, double-click a photo to open ----
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightbox-img');
+  const lightboxCaption = document.getElementById('lightbox-caption');
+  const lightboxCounter = document.getElementById('lightbox-counter');
+  const lightboxPrevBtn = document.getElementById('lightbox-prev');
+  const lightboxNextBtn = document.getElementById('lightbox-next');
+  const lightboxCloseBtn = document.getElementById('lightbox-close');
+  let lightboxIndex = -1;
+
+  // Only photos that are currently viewable (unlocked, or never locked) can be browsed in the lightbox.
+  function lightboxEntries(){
+    return entries.filter(e => !e.pin_hash || unlockedIds.has(e.id));
+  }
+
+  function renderLightbox(){
+    const list = lightboxEntries();
+    if(list.length === 0){ closeLightbox(); return; }
+    if(lightboxIndex < 0) lightboxIndex = list.length - 1;
+    if(lightboxIndex >= list.length) lightboxIndex = 0;
+    const entry = list[lightboxIndex];
+    lightboxImg.src = entry.img_url;
+    lightboxCaption.textContent = entry.caption || '';
+    lightboxCounter.textContent = (lightboxIndex + 1) + ' / ' + list.length;
+  }
+
+  function openLightbox(id){
+    const list = lightboxEntries();
+    const idx = list.findIndex(e => e.id === id);
+    if(idx === -1) return;
+    lightboxIndex = idx;
+    renderLightbox();
+    lightbox.classList.add('show');
+  }
+
+  function closeLightbox(){
+    lightbox.classList.remove('show');
+    lightboxImg.src = '';
+  }
+
+  function lightboxNext(){ lightboxIndex++; renderLightbox(); }
+  function lightboxPrev(){ lightboxIndex--; renderLightbox(); }
+
+  lightboxNextBtn.addEventListener('click', lightboxNext);
+  lightboxPrevBtn.addEventListener('click', lightboxPrev);
+  lightboxCloseBtn.addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', e => { if(e.target === lightbox) closeLightbox(); });
+  document.addEventListener('keydown', e => {
+    if(!lightbox.classList.contains('show')) return;
+    if(e.key === 'Escape') closeLightbox();
+    else if(e.key === 'ArrowRight') lightboxNext();
+    else if(e.key === 'ArrowLeft') lightboxPrev();
+  });
+
+  function updateCount(){
+    if(entries.length === 0){ countEl.textContent = ''; return; }
+    countEl.textContent = entries.length + (entries.length === 1 ? ' photo pinned' : ' photos pinned');
+  }
+
+  // ---- Database helpers ----
+  async function loadEntries(){
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('*')
+      .order('created_at', { ascending: false });
+    if(error){ console.error(error); showToast("Couldn't load the wall."); return []; }
+    return data;
+  }
+
+  async function insertEntry(entry){
+    const { error } = await supabase.from(TABLE).insert({
+      id: entry.id,
+      img_url: entry.img_url,
+      img_path: entry.img_path,
+      caption: entry.caption,
+      created_at: entry.created_at,
+      pin_hash: entry.pin_hash || null
+    });
+    if(error){ console.error(error); showToast("Couldn't save that photo."); }
+  }
+
+  async function updateCaption(id, caption){
+    const { error } = await supabase.from(TABLE).update({ caption }).eq('id', id);
+    if(error){ console.error(error); showToast("Couldn't save your note."); }
+  }
+
+  async function updatePinHash(id, pinHash){
+    const { error } = await supabase.from(TABLE).update({ pin_hash: pinHash }).eq('id', id);
+    if(error){ console.error(error); showToast("Couldn't update the lock."); return false; }
+    return true;
+  }
+
+  async function deleteEntry(entry){
+    await supabase.storage.from(BUCKET).remove([entry.img_path]);
+    const { error } = await supabase.from(TABLE).delete().eq('id', entry.id);
+    if(error){ console.error(error); showToast("Couldn't unpin that photo."); }
+  }
+
+  function scheduleCaptionSave(id, value){
+    clearTimeout(captionTimers[id]);
+    captionTimers[id] = setTimeout(()=> updateCaption(id, value), 600);
+  }
+
+  function makeLockOverlay(entry, photoWrap){
+    const overlay = document.createElement('div');
+    overlay.className = 'lock-overlay';
+    overlay.innerHTML = '<div class="lock-icon">🔒</div><div class="lock-label">Locked</div>';
+
+    const form = document.createElement('form');
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.inputMode = 'numeric';
+    input.placeholder = 'PIN';
+    input.autocomplete = 'off';
+    const btn = document.createElement('button');
+    btn.type = 'submit';
+    btn.textContent = 'Unlock';
+    form.appendChild(input);
+    form.appendChild(btn);
+    overlay.appendChild(form);
+
+    form.addEventListener('click', e => e.stopPropagation());
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const val = input.value.trim();
+      if(!val) return;
+      const hash = await sha256Hex(val);
+      if(hash === entry.pin_hash){
+        unlockedIds.add(entry.id);
+        photoWrap.classList.remove('locked');
+        overlay.remove();
+        showToast('Unlocked.');
+      }else{
+        input.value = '';
+        input.placeholder = 'Wrong PIN';
+        showToast('Wrong PIN.');
+      }
+    });
+
+    return overlay;
+  }
+
+  // ---- Rendering ----
+  function makeCard(entry){
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = entry.id;
+
+    const pin = document.createElement('div');
+    pin.className = 'pin';
+    card.appendChild(pin);
+
+    const photoWrap = document.createElement('div');
+    photoWrap.className = 'photo-wrap';
+    const img = document.createElement('img');
+    img.src = entry.img_url;
+    img.alt = 'Pinned photo';
+    img.title = 'Double-click for full screen';
+    img.addEventListener('dblclick', ()=> openLightbox(entry.id));
+    photoWrap.appendChild(img);
+
+    const isLocked = !!entry.pin_hash && !unlockedIds.has(entry.id);
+    if(isLocked){
+      photoWrap.classList.add('locked');
+      photoWrap.appendChild(makeLockOverlay(entry, photoWrap));
+    }
+    card.appendChild(photoWrap);
+
+    const textarea = document.createElement('textarea');
+    textarea.placeholder = 'Write something about this one…';
+    textarea.value = entry.caption || '';
+    textarea.rows = 2;
+    textarea.addEventListener('input', ()=>{
+      entry.caption = textarea.value;
+      scheduleCaptionSave(entry.id, textarea.value);
+    });
+    card.appendChild(textarea);
+
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const date = document.createElement('span');
+    date.className = 'date';
+    date.textContent = fmtDate(entry.created_at);
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = 'Unpin';
+    del.addEventListener('click', async ()=>{
+      const confirmed = await askConfirm({
+        title: 'Unpin this photo?',
+        desc: "This will remove it from the wall for everyone. This can't be undone.",
+        okLabel: 'Unpin it'
+      });
+      if(!confirmed) return;
+      entries = entries.filter(e => e.id !== entry.id);
+      card.remove();
+      updateCount();
+      await deleteEntry(entry);
+    });
+    const lockToggle = document.createElement('button');
+    lockToggle.className = 'lock-toggle';
+    lockToggle.type = 'button';
+    lockToggle.textContent = entry.pin_hash ? '🔒 Change PIN' : '🔒 Add PIN';
+    lockToggle.addEventListener('click', async ()=>{
+      if(entry.pin_hash && !unlockedIds.has(entry.id)){
+        showToast('Enter the PIN on the photo first to change it.');
+        return;
+      }
+      const val = await askForPin({
+        title: entry.pin_hash ? 'Change PIN' : 'Lock this photo',
+        desc: entry.pin_hash
+          ? 'Enter a new PIN, or skip to remove the lock entirely.'
+          : 'Others will see a blurred photo until they enter this PIN.',
+        okLabel: entry.pin_hash ? 'Save' : 'Lock it',
+        mode: 'set'
+      });
+      const newHash = val ? await sha256Hex(val) : null;
+      const ok = await updatePinHash(entry.id, newHash);
+      if(!ok) return;
+      entry.pin_hash = newHash;
+      if(newHash){
+        unlockedIds.add(entry.id); // the person who just set it shouldn't be re-locked out
+        showToast('Photo locked.');
+      }else{
+        showToast('Lock removed.');
+      }
+      const photoWrap = card.querySelector('.photo-wrap');
+      photoWrap.classList.remove('locked');
+      const oldOverlay = photoWrap.querySelector('.lock-overlay');
+      if(oldOverlay) oldOverlay.remove();
+      lockToggle.textContent = entry.pin_hash ? '🔒 Change PIN' : '🔒 Add PIN';
+    });
+
+    meta.appendChild(date);
+    meta.appendChild(lockToggle);
+    meta.appendChild(del);
+    card.appendChild(meta);
+
+    return card;
+  }
+
+  function renderAll(){
+    board.querySelectorAll('.card').forEach(c => c.remove());
+    const addSlot = board.querySelector('.add-slot');
+    entries.forEach(entry => board.insertBefore(makeCard(entry), addSlot));
+    updateCount();
+  }
+
+  function addSlotEl(){
+    const slot = document.createElement('div');
+    slot.className = 'add-slot';
+    slot.innerHTML = '<div class="plus">+</div><div class="label">Pin a photo</div><div class="hint">or drag one here</div>';
+    slot.addEventListener('click', ()=> fileInput.click());
+    slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag'); });
+    slot.addEventListener('dragleave', ()=> slot.classList.remove('drag'));
+    slot.addEventListener('drop', e => {
+      e.preventDefault();
+      slot.classList.remove('drag');
+      handleFiles(e.dataTransfer.files);
+    });
+    return slot;
+  }
+
+  function compressImage(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const maxW = 1100;
+          const scale = Math.min(1, maxW / img.width);
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.78);
+        };
+        img.onerror = reject;
+        img.src = reader.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleFiles(fileList){
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    if(files.length === 0) return;
+
+    const addSlot = board.querySelector('.add-slot');
+    addSlot.classList.add('uploading');
+
+    const pin = await askForPin({
+      title: files.length > 1 ? 'Lock these photos?' : 'Lock this photo?',
+      desc: 'Set a PIN and everyone else will see a blurred photo until they enter it.',
+      okLabel: 'Lock it',
+      mode: 'set'
+    });
+    const pinHash = pin ? await sha256Hex(pin) : null;
+
+    for(const file of files){
+      try{
+        const blob = await compressImage(file);
+        const id = 'e' + Date.now() + Math.random().toString(36).slice(2,8);
+        const path = id + '.jpg';
+
+        const { error: uploadError } = await supabase.storage
+          .from(BUCKET)
+          .upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+        if(uploadError) throw uploadError;
+
+        const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
+
+        const entry = {
+          id,
+          img_url: pub.publicUrl,
+          img_path: path,
+          caption: '',
+          created_at: new Date().toISOString(),
+          pin_hash: pinHash
+        };
+
+        if(pinHash) unlockedIds.add(id); // uploader sees their own photo unblurred right away
+
+        await insertEntry(entry);
+        entries.unshift(entry);
+        board.insertBefore(makeCard(entry), addSlot);
+        updateCount();
+      }catch(err){
+        console.error(err);
+        showToast("Couldn't upload one of those photos.");
+      }
+    }
+    addSlot.classList.remove('uploading');
+  }
+
+  fileInput.addEventListener('change', () => {
+    handleFiles(fileInput.files);
+    fileInput.value = '';
+  });
+
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => e.preventDefault());
+
+  // ---- Live updates: see photos other people pin, in real time ----
+  function subscribeRealtime(){
+    supabase
+      .channel('public:' + TABLE)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: TABLE }, payload => {
+        const row = payload.new;
+        if(entries.some(e => e.id === row.id)) return;
+        entries.unshift(row);
+        const addSlot = board.querySelector('.add-slot');
+        board.insertBefore(makeCard(row), addSlot);
+        updateCount();
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: TABLE }, payload => {
+        const id = payload.old.id;
+        entries = entries.filter(e => e.id !== id);
+        const card = board.querySelector('.card[data-id="' + id + '"]');
+        if(card) card.remove();
+        updateCount();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: TABLE }, payload => {
+        const row = payload.new;
+        const e = entries.find(e => e.id === row.id);
+        const card = board.querySelector('.card[data-id="' + row.id + '"]');
+        if(e) e.caption = row.caption;
+        if(card && document.activeElement !== card.querySelector('textarea')){
+          card.querySelector('textarea').value = row.caption || '';
+        }
+        if(e && e.pin_hash !== row.pin_hash){
+          e.pin_hash = row.pin_hash;
+          if(!row.pin_hash) unlockedIds.delete(row.id); // lock removed, nothing to remember
+          if(card){
+            const idx = entries.indexOf(e);
+            const fresh = makeCard(e);
+            card.replaceWith(fresh);
+          }
+        }
+      })
+      .subscribe();
+  }
+
+  async function init(){
+    board.appendChild(addSlotEl());
+    entries = await loadEntries();
+    renderAll();
+    loading.style.display = 'none';
+    board.style.display = 'grid';
+    subscribeRealtime();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
