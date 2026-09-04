@@ -252,6 +252,65 @@
   .gallery-empty{ text-align:center; padding:110px 30px; color:var(--muted); }
   .gallery-empty .big{ font-family:'Space Grotesk', sans-serif; font-size:18px; color:var(--flash); margin-bottom:8px; font-weight:600; }
   .gallery-empty .small{ font-family:'JetBrains Mono', monospace; font-size:12px; line-height:1.6; }
+
+  /* ---- Lightbox (full-screen photo view) ---- */
+  .lightbox{
+    position:fixed; inset:0; background:rgba(20,10,14,0.94); z-index:80;
+    display:flex; align-items:center; justify-content:center;
+    padding:max(18px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+    opacity:0; pointer-events:none; transition:opacity 0.22s ease;
+  }
+  .lightbox.show{ opacity:1; pointer-events:auto; }
+  .lightbox-img{
+    max-width:100%; max-height:100%; object-fit:contain; border-radius:10px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    transform:scale(0.96); transition:transform 0.22s ease;
+  }
+  .lightbox.show .lightbox-img{ transform:scale(1); }
+  .lightbox-close{
+    position:absolute; top:max(18px, env(safe-area-inset-top)); right:18px;
+    width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.14);
+    border:none; color:#fff; font-size:18px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; z-index:2;
+  }
+  .lightbox-close:active{ transform:scale(0.92); }
+  .lightbox-caption{
+    position:absolute; left:0; right:0; bottom:max(24px, env(safe-area-inset-bottom));
+    text-align:center; padding:0 30px; color:#fff0f5;
+    font-family:'Inter', sans-serif; font-size:13.5px; line-height:1.5;
+  }
+
+  /* ---- Confirm dialog (in-app, replaces browser confirm) ---- */
+  .confirm-modal{
+    position:fixed; inset:0; background:rgba(255,211,225,0.82); backdrop-filter:blur(5px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px; z-index:90; opacity:0; pointer-events:none;
+    transition:opacity 0.2s ease;
+  }
+  .confirm-modal.show{ opacity:1; pointer-events:auto; }
+  .confirm-sheet{
+    width:min(86vw, 320px); background:#ffffff;
+    border-radius:20px; padding:22px 20px 16px; box-shadow:0 24px 60px rgba(184,104,132,0.28);
+    transform:translateY(8px); transition:transform 0.2s ease; text-align:center;
+  }
+  .confirm-modal.show .confirm-sheet{ transform:translateY(0); }
+  .confirm-title{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:16.5px;
+    color:var(--flash); margin-bottom:6px;
+  }
+  .confirm-text{
+    font-family:'Inter', sans-serif; font-size:13px; line-height:1.5; color:#8a6b76;
+    margin-bottom:16px;
+  }
+  .confirm-actions{ display:flex; gap:10px; }
+  .conf-btn{
+    flex:1; padding:11px 10px; border-radius:20px; border:none; cursor:pointer;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13.5px;
+    letter-spacing:0.02em;
+  }
+  .conf-btn.conf-cancel{ background:#fff5f8; color:var(--flash); border:1px solid rgba(95,69,80,0.15); }
+  .conf-btn.conf-delete{ background:var(--skip); color:#fff; }
+  .conf-btn:active{ transform:scale(0.97); }
 </style>
 </head>
 <body>
@@ -306,6 +365,23 @@
   <div class="gallery-grid" id="galleryGrid"></div>
 </div>
 
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightboxClose" aria-label="Close photo">✕</button>
+  <img class="lightbox-img" id="lightboxImg" alt="Full-screen Moon photo">
+  <div class="lightbox-caption" id="lightboxCaption"></div>
+</div>
+
+<div class="confirm-modal" id="confirmModal">
+  <div class="confirm-sheet">
+    <div class="confirm-title">Delete this Moon moment?</div>
+    <div class="confirm-text">This can't be undone.</div>
+    <div class="confirm-actions">
+      <button class="conf-btn conf-cancel" id="confirmCancel">Cancel</button>
+      <button class="conf-btn conf-delete" id="confirmDelete">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- Supabase client library -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -337,6 +413,13 @@
   const galleryModal = document.getElementById('galleryModal');
   const galleryClose = document.getElementById('galleryClose');
   const galleryGrid = document.getElementById('galleryGrid');
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightboxImg');
+  const lightboxCaption = document.getElementById('lightboxCaption');
+  const lightboxClose = document.getElementById('lightboxClose');
+  const confirmModal = document.getElementById('confirmModal');
+  const confirmCancel = document.getElementById('confirmCancel');
+  const confirmDelete = document.getElementById('confirmDelete');
 
   let queue = [];
   let savedList = [];
@@ -485,6 +568,45 @@
     return card;
   }
 
+  // ---- Lightbox (double-click / double-tap to view full screen) ----
+  function openLightbox(entry){
+    lightboxImg.src = entry.img_url;
+    lightboxCaption.textContent = entry.caption || '';
+    confirmModal.classList.remove('show');
+    lightbox.classList.add('show');
+  }
+
+  function closeLightbox(){
+    lightbox.classList.remove('show');
+  }
+
+  lightboxClose.addEventListener('click', closeLightbox);
+  lightbox.addEventListener('click', (e) => {
+    if(e.target === lightbox) closeLightbox();
+  });
+
+  // ---- In-app confirm dialog (replaces browser confirm()) ----
+  function askConfirm(){
+    return new Promise((resolve) => {
+      confirmModal.classList.add('show');
+
+      function cleanup(result){
+        confirmModal.classList.remove('show');
+        confirmDelete.removeEventListener('click', onYes);
+        confirmCancel.removeEventListener('click', onNo);
+        confirmModal.removeEventListener('click', onBackdrop);
+        resolve(result);
+      }
+      function onYes(){ cleanup(true); }
+      function onNo(){ cleanup(false); }
+      function onBackdrop(e){ if(e.target === confirmModal) cleanup(false); }
+
+      confirmDelete.addEventListener('click', onYes);
+      confirmCancel.addEventListener('click', onNo);
+      confirmModal.addEventListener('click', onBackdrop);
+    });
+  }
+
   // ---- Gallery ----
   function updateGalleryCount(){
     if(savedList.length > 0){
@@ -512,6 +634,7 @@
       img.src = entry.img_url;
       img.alt = 'Saved Moon photo';
       img.draggable = false;
+      img.addEventListener('dblclick', () => openLightbox(entry));
       photo.appendChild(img);
       item.appendChild(photo);
 
@@ -539,7 +662,7 @@
   }
 
  async function deleteSaved(entry){
-  const ok = window.confirm('Delete this PIKA moment? This can\'t be undone.');
+  const ok = await askConfirm();
   if(!ok) return;
   savedList = savedList.filter(e => e.id !== entry.id);
   renderGallery();
