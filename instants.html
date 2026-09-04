@@ -538,13 +538,15 @@
     });
   }
 
-  async function deleteSaved(entry){
-    savedList = savedList.filter(e => e.id !== entry.id);
-    renderGallery();
-    updateGalleryCount();
-    await removeFromDb(entry);
-    showToast('Deleted');
-  }
+ async function deleteSaved(entry){
+  const ok = window.confirm('Delete this PIKA moment? This can\'t be undone.');
+  if(!ok) return;
+  savedList = savedList.filter(e => e.id !== entry.id);
+  renderGallery();
+  updateGalleryCount();
+  await removeFromDb(entry);
+  showToast('Deleted');
+}
 
   async function refreshSaved(){
     savedList = await loadSaved();
