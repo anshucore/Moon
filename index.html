@@ -384,11 +384,16 @@
             return;
           }
           this.composeSending = true;
-          try {
-            let imageUrl = null;
 
-            if (this.composeImageFile) {
-              const path = `notes/${Date.now()}-${this.composeImageFile.name}`;
+          // Upload the photo separately, so if it fails, the note text
+          // still gets saved instead of the whole thing being dropped.
+          let imageUrl = null;
+          let imageFailed = false;
+
+          if (this.composeImageFile) {
+            try {
+              const safeName = this.composeImageFile.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+              const path = `notes/${Date.now()}-${safeName}`;
               const { error: uploadError } = await sb.storage
                 .from('love-notes')
                 .upload(path, this.composeImageFile);
@@ -398,8 +403,13 @@
                 .from('love-notes')
                 .getPublicUrl(path);
               imageUrl = pub.publicUrl;
+            } catch (e) {
+              console.error('Could not upload photo:', e);
+              imageFailed = true;
             }
+          }
 
+          try {
             const { error } = await sb.from('love_notes').insert({
               content: this.composeText.trim(),
               image_url: imageUrl,
@@ -411,6 +421,10 @@
             this.composeImageFile = null;
             this.composeImagePreview = null;
             this.noteMode = 'empty';
+
+            if (imageFailed) {
+              alert('Note sent — but the photo could not be attached, so it went without it.');
+            }
           } catch (e) {
             console.error('Could not send note:', e);
             alert('Could not send the note, please try again.');
