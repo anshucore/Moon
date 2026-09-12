@@ -34,6 +34,9 @@
     
     </style>
 
+  <!-- Supabase JS client (for saved love notes) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <!-- Alpine.js -->
   <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
@@ -236,7 +239,6 @@
             this.unlocked = true;
             sessionStorage.setItem('moon-unlocked', 'true');
             this.checkSpecialDay();
-            this.$store.note.afterIdentityKnown();
           } else {
             this.passwordError = true;
           }
@@ -244,8 +246,186 @@
           this.passwordInput = '';
         },
 
-        // --- Love letter bubble ---
+        // --- Love letter bubble (now backed by Supabase) ---
         letterOpen: false,
+        supabase: window.supabase.createClient(
+          'https://qpeoldazjmctxaefdwni.supabase.co',
+          'sb_publishable_dm8NgOu_Wt1f7ussG76qkw_ODaRW-1h'
+        ),
+
+        // 'loading' | 'view' | 'empty' | 'compose'
+        noteMode: 'loading',
+        currentNote: null,
+        noteActionLoading: false,
+        noteJustSaved: false,
+
+        composeText: '',
+        composeImageFile: null,
+        composeImagePreview: null,
+        composeSending: false,
+
+        savedNotesOpen: false,
+        savedNotesLoading: false,
+        savedNotes: [],
+        openSavedNoteId: null,
+        savedNoteActionLoading: false,
+
+        openLetter() {
+          this.letterOpen = true;
+          this.noteJustSaved = false;
+          this.fetchLatestNote();
+        },
+
+        async fetchLatestNote() {
+          this.noteMode = 'loading';
+          this.currentNote = null;
+          try {
+            const { data, error } = await this.supabase
+              .from('love_notes')
+              .select('*')
+              .eq('status', 'unseen')
+              .order('created_at', { ascending: true })
+              .limit(1);
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+              this.currentNote = data[0];
+              this.noteMode = 'view';
+            } else {
+              this.noteMode = 'empty';
+            }
+          } catch (e) {
+            console.error('Could not load note:', e);
+            this.noteMode = 'empty';
+          }
+        },
+
+        async markNoteSeen() {
+          if (!this.currentNote) return;
+          this.noteActionLoading = true;
+          try {
+            const { error } = await this.supabase
+              .from('love_notes')
+              .delete()
+              .eq('id', this.currentNote.id);
+            if (error) throw error;
+          } catch (e) {
+            console.error('Could not remove note:', e);
+          } finally {
+            this.currentNote = null;
+            this.noteMode = 'empty';
+            this.noteActionLoading = false;
+          }
+        },
+
+        async saveNote() {
+          if (!this.currentNote) return;
+          this.noteActionLoading = true;
+          try {
+            const { error } = await this.supabase
+              .from('love_notes')
+              .update({ status: 'saved' })
+              .eq('id', this.currentNote.id);
+            if (error) throw error;
+            this.noteJustSaved = true;
+          } catch (e) {
+            console.error('Could not save note:', e);
+          } finally {
+            this.currentNote = null;
+            this.noteMode = 'empty';
+            this.noteActionLoading = false;
+          }
+        },
+
+        startCompose() {
+          this.noteJustSaved = false;
+          this.composeText = '';
+          this.composeImageFile = null;
+          this.composeImagePreview = null;
+          this.noteMode = 'compose';
+        },
+
+        onComposeImagePicked(event) {
+          const file = event.target.files && event.target.files[0];
+          if (!file) return;
+          this.composeImageFile = file;
+          this.composeImagePreview = URL.createObjectURL(file);
+        },
+
+        async sendNote() {
+          if (!this.composeText.trim() || this.composeSending) return;
+          this.composeSending = true;
+          try {
+            let imageUrl = null;
+
+            if (this.composeImageFile) {
+              const path = `notes/${Date.now()}-${this.composeImageFile.name}`;
+              const { error: uploadError } = await this.supabase.storage
+                .from('love-notes')
+                .upload(path, this.composeImageFile);
+              if (uploadError) throw uploadError;
+
+              const { data: pub } = this.supabase.storage
+                .from('love-notes')
+                .getPublicUrl(path);
+              imageUrl = pub.publicUrl;
+            }
+
+            const { error } = await this.supabase.from('love_notes').insert({
+              content: this.composeText.trim(),
+              image_url: imageUrl,
+              status: 'unseen',
+            });
+            if (error) throw error;
+
+            this.composeText = '';
+            this.composeImageFile = null;
+            this.composeImagePreview = null;
+            this.noteMode = 'empty';
+          } catch (e) {
+            console.error('Could not send note:', e);
+            alert('Could not send the note, please try again.');
+          } finally {
+            this.composeSending = false;
+          }
+        },
+
+        async openSavedNotes() {
+          this.savedNotesOpen = true;
+          this.savedNotesLoading = true;
+          try {
+            const { data, error } = await this.supabase
+              .from('love_notes')
+              .select('*')
+              .eq('status', 'saved')
+              .order('created_at', { ascending: false });
+            if (error) throw error;
+            this.savedNotes = data || [];
+          } catch (e) {
+            console.error('Could not load saved notes:', e);
+            this.savedNotes = [];
+          } finally {
+            this.savedNotesLoading = false;
+          }
+        },
+
+        toggleSavedNote(id) {
+          this.openSavedNoteId = this.openSavedNoteId === id ? null : id;
+        },
+
+        async deleteSavedNote(id) {
+          this.savedNoteActionLoading = true;
+          try {
+            const { error } = await this.supabase.from('love_notes').delete().eq('id', id);
+            if (error) throw error;
+            this.savedNotes = this.savedNotes.filter((n) => n.id !== id);
+          } catch (e) {
+            console.error('Could not delete saved note:', e);
+          } finally {
+            this.savedNoteActionLoading = false;
+          }
+        },
 
         // --- Special days: birthday (3 Sep) & anniversary (10 Dec) ---
         isBirthdayToday: false,
@@ -340,7 +520,7 @@
           update();
           setInterval(update, 1000);
         }
-      }" x-init="startCounting(); if (unlocked) { checkSpecialDay(); $store.note.afterIdentityKnown(); }"
+      }" x-init="startCounting(); if (unlocked) checkSpecialDay()"
     class="min-h-dvh min-w-80 bg-white text-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
     <!-- Password Gate -->
     <div x-cloak x-show="!unlocked" x-transition:leave="transition ease-in duration-200"
@@ -472,6 +652,15 @@
         <div class="flex items-center gap-4">
           <!-- Nav -->
           <nav class="flex items-center gap-6">
+            <button type="button" x-on:click="openSavedNotes()"
+              class="flex items-center gap-1.5 text-sm font-medium text-zinc-600 hover:text-yellow-600 dark:text-zinc-400 dark:hover:text-yellow-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                stroke="currentColor" class="inline-block size-5">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+              </svg>
+              <span>Saved notes</span>
+            </button>
           </nav>
           <!-- END Nav -->
         </div>
@@ -677,7 +866,7 @@
     <!-- END Page Content -->
 
     <!-- Love Letter Notification Bubble -->
-    <button x-cloak x-show="unlocked && !letterOpen" x-on:click="letterOpen = true" type="button"
+    <button x-cloak x-show="unlocked && !letterOpen" x-on:click="openLetter()" type="button"
       aria-label="Open love letter"
       class="letter-bubble fixed bottom-5 left-5 z-40 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-2xl shadow-lg shadow-orange-500/30 transition hover:scale-105 active:scale-95 sm:bottom-6 sm:left-6">
       <span aria-hidden="true">😁</span>
@@ -687,100 +876,6 @@
       </span>
     </button>
     <!-- END Love Letter Notification Bubble -->
-
-    <!-- Who's Here? (picks which name notes get saved/seen as) -->
-    <div x-cloak x-show="unlocked && !$store.note.whoami"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div class="relative w-full max-w-xs rounded-xl bg-white p-6 text-center shadow-2xl dark:bg-zinc-900">
-        <p class="mb-1 text-sm text-zinc-500 dark:text-zinc-400">Quick one, so notes land with the right person —</p>
-        <p class="mb-5 text-lg font-medium text-zinc-900 dark:text-zinc-50">Who's this?</p>
-        <div class="flex flex-col gap-3">
-          <button type="button" x-on:click="$store.note.setWhoAmI('moon')"
-            class="rounded-lg bg-yellow-500 py-2.5 font-medium text-white transition hover:bg-yellow-600 active:scale-95">
-            Anshu 🌻
-          </button>
-          <button type="button" x-on:click="$store.note.setWhoAmI('ashifa')"
-            class="rounded-lg bg-pink-500 py-2.5 font-medium text-white transition hover:bg-pink-600 active:scale-95">
-            Ashifa 💗
-          </button>
-        </div>
-      </div>
-    </div>
-    <!-- END Who's Here? -->
-
-    <!-- Handwritten Note Bubble (shared note either of you can write) -->
-    <button x-cloak x-show="unlocked && $store.note.whoami && !$store.note.open" x-on:click="$store.note.openNote()"
-      type="button" aria-label="Open our note"
-      class="letter-bubble fixed bottom-5 right-5 z-40 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-2xl shadow-lg shadow-teal-500/30 transition hover:scale-105 active:scale-95 sm:bottom-6 sm:right-6">
-      <span aria-hidden="true">📝</span>
-      <span x-cloak x-show="$store.note.hasUnseen" aria-hidden="true" class="absolute -top-0.5 -right-0.5 flex size-3.5">
-        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
-        <span class="relative inline-flex size-3.5 rounded-full bg-red-500"></span>
-      </span>
-    </button>
-    <!-- END Handwritten Note Bubble -->
-
-    <!-- Handwritten Note Modal -->
-    <div x-cloak x-show="$store.note.open" x-on:keydown.escape.window="$store.note.closeNote()"
-      x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
-      x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
-      x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <!-- Click outside to close -->
-      <div class="absolute inset-0" x-on:click="$store.note.closeNote()"></div>
-
-      <div class="relative w-full max-w-md">
-        <!-- Close -->
-        <button type="button" x-on:click="$store.note.closeNote()" aria-label="Close note"
-          class="absolute -top-12 right-0 text-sm font-medium text-zinc-200 hover:text-teal-400">
-          Close ✕
-        </button>
-
-        <div x-show="$store.note.open" x-transition:enter="transition-all duration-300 ease-out"
-          x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
-          x-transition:leave="transition-all duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100"
-          x-transition:leave-end="opacity-0 scale-95"
-          class="relative max-h-[80dvh] overflow-y-auto rounded-2xl bg-[#fdf6e3] p-7 shadow-2xl sm:p-9">
-
-          <h3 class="text-center text-xs font-medium tracking-widest text-teal-700/70 uppercase dark:text-teal-500/80">
-            Our little note
-          </h3>
-
-          <!-- Current note -->
-          <template x-if="$store.note.message">
-            <div class="mt-4 text-center" style="font-family: 'Caveat', cursive;">
-              <p class="text-2xl leading-relaxed text-[#4a3520] sm:text-[26px]" x-text="$store.note.message"></p>
-              <p class="mt-3 text-sm text-zinc-500" style="font-family: 'Inter', sans-serif;">
-                — <span
-                  x-text="$store.note.author === 'anshu' ? 'Anshu 🌻' : ($store.note.author === 'ashifa' ? 'Ashifa 💗' : '')"></span>
-              </p>
-            </div>
-          </template>
-          <template x-if="!$store.note.message">
-            <p class="mt-4 text-center text-sm text-zinc-500">No note yet — leave the first one below.</p>
-          </template>
-
-          <!-- Write / update -->
-          <div class="mt-6">
-            <textarea x-model="$store.note.draft" rows="4" placeholder="Leave a little note for them..."
-              class="w-full rounded-lg border border-zinc-300 bg-white p-3 text-sm text-zinc-800 outline-none focus:border-teal-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"></textarea>
-            <div class="mt-3 flex justify-end gap-2">
-              <button type="button" x-on:click="$store.note.closeNote()"
-                class="rounded-lg px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-200/60 dark:text-zinc-300 dark:hover:bg-zinc-800">
-                Cancel
-              </button>
-              <button type="button" x-on:click="$store.note.save()"
-                x-bind:disabled="$store.note.saving || !$store.note.draft.trim()"
-                class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-700 disabled:opacity-50">
-                <span x-show="!$store.note.saving">Save note</span>
-                <span x-show="$store.note.saving">Saving…</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- END Handwritten Note Modal -->
 
     <!-- Love Letter Modal -->
     <div x-cloak x-show="letterOpen" x-on:keydown.escape.window="letterOpen = false"
@@ -811,32 +906,97 @@
           <!-- Paper -->
           <div
             class="relative -mt-1 -mb-1 max-h-[75dvh] overflow-y-auto bg-[#fdf6e3] px-7 py-8 shadow-2xl sm:px-10 sm:py-10">
-            <!-- Photo, taped in like a keepsake -->
-            <div class="mx-auto mb-6 w-40 rotate-[-3deg] bg-white p-2 pb-4 shadow-md sm:w-44">
-              <div aria-hidden="true"
-                class="absolute left-1/2 -top-3 h-6 w-16 -translate-x-1/2 -rotate-2 bg-yellow-200/70"
-                style="clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);"></div>
-              <img
-                src="https://i.pinimg.com/474x/3c/63/10/3c63100127d896f366c1933622e65e97.jpg"
-                alt="Our photo" class="aspect-square w-full rounded-sm object-cover" />
+
+            <!-- Loading -->
+            <div x-show="noteMode === 'loading'" class="flex flex-col items-center justify-center py-10">
+              <svg class="size-8 animate-spin text-[#a67c3d]" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+              </svg>
+              <p style="font-family: 'Caveat', cursive;" class="mt-3 text-xl text-[#4a3520]">Unrolling the
+                letter…</p>
             </div>
 
-            <!-- Handwritten note -->
-            <div style="font-family: 'Caveat', cursive;" class="text-center text-[#4a3520]">
-              <p class="text-2xl leading-snug sm:text-[26px]">
-                My dearest Ashifa,
-              </p>
-              <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
-                i wanna kiss you 😬
-              </p>
-              <p class="mt-4 text-xl leading-relaxed sm:text-2xl">
-                Thank you for being exactly who you are. I don't say it
-                enough, so let this be the proof, saved somewhere it can't
-                be forgotten.
-              </p>
-              <p class="mt-6 text-2xl sm:text-[26px]">
-                Forever yours,<br />Moon 🌙
-              </p>
+            <!-- A note is waiting to be read -->
+            <template x-if="noteMode === 'view' && currentNote">
+              <div>
+                <!-- Photo, taped in like a keepsake -->
+                <div x-show="currentNote.image_url" class="mx-auto mb-6 w-40 rotate-[-3deg] bg-white p-2 pb-4 shadow-md sm:w-44">
+                  <div aria-hidden="true"
+                    class="absolute left-1/2 -top-3 h-6 w-16 -translate-x-1/2 -rotate-2 bg-yellow-200/70"
+                    style="clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);"></div>
+                  <img :src="currentNote.image_url" alt="Our photo"
+                    class="aspect-square w-full rounded-sm object-cover" />
+                </div>
+
+                <!-- Handwritten note -->
+                <div style="font-family: 'Caveat', cursive;"
+                  class="whitespace-pre-line text-center text-xl leading-relaxed text-[#4a3520] sm:text-2xl"
+                  x-text="currentNote.content"></div>
+
+                <!-- Seen / Save actions -->
+                <div class="mt-8 flex items-center justify-center gap-3 border-t border-[#e4d5ae] pt-6">
+                  <button type="button" x-on:click="saveNote()" x-bind:disabled="noteActionLoading"
+                    class="rounded-lg bg-[#4a3520] px-4 py-2 text-sm font-medium text-[#fdf6e3] transition hover:bg-[#5a4128] active:opacity-80 disabled:opacity-60">
+                    Save 💌
+                  </button>
+                  <button type="button" x-on:click="markNoteSeen()" x-bind:disabled="noteActionLoading"
+                    class="rounded-lg border border-[#4a3520]/30 px-4 py-2 text-sm font-medium text-[#4a3520] transition hover:bg-[#4a3520]/10 active:opacity-80 disabled:opacity-60">
+                    Seen, remove it
+                  </button>
+                </div>
+                <p class="mt-2 text-center text-xs text-[#8a7355]">
+                  "Seen" removes this note for good. "Save" keeps it under Saved notes.
+                </p>
+              </div>
+            </template>
+
+            <!-- No note right now -->
+            <div x-show="noteMode === 'empty'" style="font-family: 'Caveat', cursive;"
+              class="py-4 text-center text-[#4a3520]">
+              <template x-if="noteJustSaved">
+                <p class="mb-4 text-xl sm:text-2xl">Saved! You'll find it under Saved notes. 💛</p>
+              </template>
+              <p class="text-2xl leading-snug sm:text-[26px]">There is no note here right now.</p>
+              <p class="mt-2 text-xl sm:text-2xl">Write one?</p>
+              <button type="button" x-on:click="startCompose()"
+                class="mt-5 rounded-lg bg-[#4a3520] px-5 py-2 text-sm font-medium text-[#fdf6e3] transition hover:bg-[#5a4128] active:opacity-80"
+                style="font-family: 'Inter', sans-serif;">
+                Write a note
+              </button>
+            </div>
+
+            <!-- Compose a new note -->
+            <div x-show="noteMode === 'compose'" style="font-family: 'Inter', sans-serif;" class="text-[#4a3520]">
+              <p style="font-family: 'Caveat', cursive;" class="mb-3 text-center text-2xl">Write your note</p>
+
+              <textarea x-model="composeText" rows="6" placeholder="Say what's on your heart…"
+                class="w-full rounded-lg border border-[#e4d5ae] bg-white/70 p-3 text-base text-[#4a3520] placeholder-[#a67c3d]/60 outline-none focus:border-[#a67c3d] focus:ring-2 focus:ring-[#a67c3d]/30"></textarea>
+
+              <div class="mt-3 flex items-center gap-3">
+                <label
+                  class="cursor-pointer rounded-lg border border-[#e4d5ae] px-3 py-1.5 text-xs font-medium hover:bg-[#e4d5ae]/30">
+                  <span x-text="composeImageFile ? 'Change photo' : 'Add a photo (optional)'"></span>
+                  <input type="file" accept="image/*" class="hidden" x-on:change="onComposeImagePicked($event)" />
+                </label>
+                <img x-show="composeImagePreview" :src="composeImagePreview" alt=""
+                  class="size-10 rounded-md object-cover" />
+              </div>
+
+              <div class="mt-5 flex items-center justify-center gap-3">
+                <button type="button" x-on:click="sendNote()"
+                  x-bind:disabled="composeSending || !composeText.trim()"
+                  class="rounded-lg bg-[#4a3520] px-4 py-2 text-sm font-medium text-[#fdf6e3] transition hover:bg-[#5a4128] active:opacity-80 disabled:opacity-60">
+                  <span x-show="!composeSending">Send note 💌</span>
+                  <span x-show="composeSending">Sending…</span>
+                </button>
+                <button type="button" x-on:click="noteMode = 'empty'"
+                  class="rounded-lg border border-[#4a3520]/30 px-4 py-2 text-sm font-medium text-[#4a3520] transition hover:bg-[#4a3520]/10 active:opacity-80">
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1009,6 +1169,71 @@
     </div>
     <!-- END Anniversary Letter Modal -->
 
+    <!-- Saved Notes Modal -->
+    <div x-cloak x-show="savedNotesOpen" x-on:keydown.escape.window="savedNotesOpen = false"
+      x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
+      x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <!-- Click outside to close -->
+      <div class="absolute inset-0" x-on:click="savedNotesOpen = false"></div>
+
+      <div x-show="savedNotesOpen" x-transition:enter="transition-all duration-300 ease-out"
+        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+        x-transition:leave="transition-all duration-150 ease-in" x-transition:leave-start="opacity-100 scale-100"
+        x-transition:leave-end="opacity-0 scale-95"
+        class="relative flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-zinc-900">
+        <!-- Header -->
+        <div class="flex flex-none items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
+          <h2 class="text-lg font-medium text-zinc-900 dark:text-white">Saved notes</h2>
+          <button type="button" x-on:click="savedNotesOpen = false" aria-label="Close"
+            class="text-zinc-400 hover:text-yellow-600 dark:hover:text-yellow-400">
+            ✕
+          </button>
+        </div>
+
+        <!-- Body -->
+        <div class="flex-auto overflow-y-auto px-6 py-4">
+          <div x-show="savedNotesLoading" class="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+            Loading…
+          </div>
+
+          <div x-show="!savedNotesLoading && savedNotes.length === 0"
+            class="py-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
+            No saved notes yet. Save a note from the letter to keep it here.
+          </div>
+
+          <div class="space-y-3">
+            <template x-for="note in savedNotes" :key="note.id">
+              <div class="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+                <button type="button" x-on:click="toggleSavedNote(note.id)"
+                  class="flex w-full items-center justify-between gap-3 bg-zinc-50 px-4 py-3 text-left hover:bg-zinc-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-800">
+                  <span class="truncate text-sm text-zinc-700 dark:text-zinc-200" x-text="note.content"></span>
+                  <span class="flex-none text-xs text-zinc-400" x-text="openSavedNoteId === note.id ? '▲' : '▼'"></span>
+                </button>
+                <div x-show="openSavedNoteId === note.id"
+                  class="bg-[#fdf6e3] px-4 py-4 dark:bg-[#2a2318]">
+                  <img x-show="note.image_url" :src="note.image_url" alt=""
+                    class="mx-auto mb-3 w-32 rounded-sm object-cover shadow-md" />
+                  <p style="font-family: 'Caveat', cursive;"
+                    class="whitespace-pre-line text-center text-xl leading-relaxed text-[#4a3520]"
+                    x-text="note.content"></p>
+                  <div class="mt-3 flex justify-center">
+                    <button type="button" x-on:click="deleteSavedNote(note.id)"
+                      x-bind:disabled="savedNoteActionLoading"
+                      class="rounded-lg border border-[#4a3520]/30 px-3 py-1.5 text-xs font-medium text-[#4a3520] transition hover:bg-[#4a3520]/10 disabled:opacity-60">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- END Saved Notes Modal -->
+
     <!-- Time Together Modal -->
     <div x-cloak x-show="timerOpen" x-on:keydown.escape.window="timerOpen = false"
       x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
@@ -1077,146 +1302,6 @@
     <!-- END Time Together Modal -->
   </div>
   <!-- END Page Container -->
-
-  <!-- Supabase client (same project as instants.html) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    document.addEventListener('alpine:init', () => {
-      // ---- Same Supabase project used by instants.html ----
-      const NOTE_SUPABASE_URL = 'https://qpeoldazjmctxaefdwni.supabase.co';
-      const NOTE_SUPABASE_ANON_KEY = 'sb_publishable_dm8NgOu_Wt1f7ussG76qkw_ODaRW-1h';
-      const NOTE_TABLE = 'handwritten_notes';
-      const NOTE_ROW_ID = 'shared';
-
-      const noteClient = window.supabase.createClient(NOTE_SUPABASE_URL, NOTE_SUPABASE_ANON_KEY);
-
-      Alpine.store('note', {
-        whoami: localStorage.getItem('moon-whoami') || '',
-        message: '',
-        author: '',
-        seenByMoon: true,
-        seenByAshifa: true,
-        updatedAt: null,
-        loaded: false,
-        subscribed: false,
-        open: false,
-        draft: '',
-        saving: false,
-
-        // Bubble only lights up for the person who DIDN'T write the
-        // current note, and only until they've opened it.
-        get hasUnseen() {
-          if (!this.whoami || !this.message) return false;
-          if (this.author === this.whoami) return false;
-          return this.whoami === 'moon' ? !this.seenByMoon : !this.seenByAshifa;
-        },
-
-        setWhoAmI(who) {
-          this.whoami = who;
-          localStorage.setItem('moon-whoami', who);
-          this.afterIdentityKnown();
-        },
-
-        async afterIdentityKnown() {
-          if (!this.whoami) return;
-          if (!this.loaded) await this.load();
-          if (!this.subscribed) this.subscribeRealtime();
-        },
-
-        applyRow(row) {
-          if (!row) return;
-          this.message = row.message || '';
-          this.author = row.author || '';
-          this.seenByMoon = row.seen_by_moon !== false;
-          this.seenByAshifa = row.seen_by_ashifa !== false;
-          this.updatedAt = row.updated_at || null;
-          this.loaded = true;
-        },
-
-        async load() {
-          const { data, error } = await noteClient
-            .from(NOTE_TABLE).select('*').eq('id', NOTE_ROW_ID).maybeSingle();
-
-          if (error) {
-            console.error(error);
-            this.loaded = true;
-            return;
-          }
-
-          if (data) {
-            this.applyRow(data);
-          } else {
-            // First time ever: seed the shared row.
-            const seed = {
-              id: NOTE_ROW_ID, message: '', author: '',
-              seen_by_moon: true, seen_by_ashifa: true,
-              updated_at: new Date().toISOString()
-            };
-            const { error: insErr } = await noteClient.from(NOTE_TABLE).insert(seed);
-            if (insErr) console.error(insErr);
-            this.applyRow(seed);
-          }
-        },
-
-        subscribeRealtime() {
-          this.subscribed = true;
-          noteClient
-            .channel('public:' + NOTE_TABLE)
-            .on('postgres_changes',
-              { event: '*', schema: 'public', table: NOTE_TABLE, filter: `id=eq.${NOTE_ROW_ID}` },
-              payload => { if (payload.new) this.applyRow(payload.new); })
-            .subscribe();
-        },
-
-        openNote() {
-          this.draft = this.message;
-          this.open = true;
-          this.markSeenIfNeeded();
-        },
-
-        closeNote() {
-          this.open = false;
-        },
-
-        async markSeenIfNeeded() {
-          if (!this.whoami || !this.message) return;
-          if (this.author === this.whoami) return;
-          const alreadySeen = this.whoami === 'moon' ? this.seenByMoon : this.seenByAshifa;
-          if (alreadySeen) return;
-
-          const patch = this.whoami === 'moon' ? { seen_by_moon: true } : { seen_by_ashifa: true };
-          if (this.whoami === 'moon') this.seenByMoon = true; else this.seenByAshifa = true;
-
-          const { error } = await noteClient.from(NOTE_TABLE).update(patch).eq('id', NOTE_ROW_ID);
-          if (error) console.error(error);
-        },
-
-        async save() {
-          const text = (this.draft || '').trim();
-          if (!text || !this.whoami || this.saving) return;
-          this.saving = true;
-
-          const patch = {
-            message: text,
-            author: this.whoami,
-            // The writer has obviously "seen" it; the other person hasn't yet.
-            seen_by_moon: this.whoami === 'moon',
-            seen_by_ashifa: this.whoami === 'ashifa',
-            updated_at: new Date().toISOString()
-          };
-
-          const { error } = await noteClient.from(NOTE_TABLE).update(patch).eq('id', NOTE_ROW_ID);
-          if (error) {
-            console.error(error);
-          } else {
-            this.applyRow({ id: NOTE_ROW_ID, ...patch });
-            this.open = false;
-          }
-          this.saving = false;
-        }
-      });
-    });
-  </script>
 </body>
 
 </html>
