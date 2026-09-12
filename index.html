@@ -248,16 +248,27 @@
 
         // --- Love letter bubble (now backed by Supabase) ---
         letterOpen: false,
-        supabase: window.supabase.createClient(
-          'https://qpeoldazjmctxaefdwni.supabase.co',
-          'sb_publishable_dm8NgOu_Wt1f7ussG76qkw_ODaRW-1h'
-        ),
+        supabase: null,
+        initSupabase() {
+          if (this.supabase) return this.supabase;
+          try {
+            this.supabase = window.supabase.createClient(
+              'https://qpeoldazjmctxaefdwni.supabase.co',
+              'sb_publishable_dm8NgOu_Wt1f7ussG76qkw_ODaRW-1h'
+            );
+          } catch (e) {
+            console.error('Supabase failed to load:', e);
+            this.supabase = null;
+          }
+          return this.supabase;
+        },
 
         // 'loading' | 'view' | 'empty' | 'compose'
         noteMode: 'loading',
         currentNote: null,
         noteActionLoading: false,
         noteJustSaved: false,
+        noteError: false,
 
         composeText: '',
         composeImageFile: null,
@@ -278,9 +289,16 @@
 
         async fetchLatestNote() {
           this.noteMode = 'loading';
+          this.noteError = false;
           this.currentNote = null;
+          const sb = this.initSupabase();
+          if (!sb) {
+            this.noteMode = 'empty';
+            this.noteError = true;
+            return;
+          }
           try {
-            const { data, error } = await this.supabase
+            const { data, error } = await sb
               .from('love_notes')
               .select('*')
               .eq('status', 'unseen')
@@ -298,14 +316,17 @@
           } catch (e) {
             console.error('Could not load note:', e);
             this.noteMode = 'empty';
+            this.noteError = true;
           }
         },
 
         async markNoteSeen() {
           if (!this.currentNote) return;
+          const sb = this.initSupabase();
+          if (!sb) return;
           this.noteActionLoading = true;
           try {
-            const { error } = await this.supabase
+            const { error } = await sb
               .from('love_notes')
               .delete()
               .eq('id', this.currentNote.id);
@@ -321,9 +342,11 @@
 
         async saveNote() {
           if (!this.currentNote) return;
+          const sb = this.initSupabase();
+          if (!sb) return;
           this.noteActionLoading = true;
           try {
-            const { error } = await this.supabase
+            const { error } = await sb
               .from('love_notes')
               .update({ status: 'saved' })
               .eq('id', this.currentNote.id);
@@ -355,24 +378,29 @@
 
         async sendNote() {
           if (!this.composeText.trim() || this.composeSending) return;
+          const sb = this.initSupabase();
+          if (!sb) {
+            alert('Could not connect right now, please try again.');
+            return;
+          }
           this.composeSending = true;
           try {
             let imageUrl = null;
 
             if (this.composeImageFile) {
               const path = `notes/${Date.now()}-${this.composeImageFile.name}`;
-              const { error: uploadError } = await this.supabase.storage
+              const { error: uploadError } = await sb.storage
                 .from('love-notes')
                 .upload(path, this.composeImageFile);
               if (uploadError) throw uploadError;
 
-              const { data: pub } = this.supabase.storage
+              const { data: pub } = sb.storage
                 .from('love-notes')
                 .getPublicUrl(path);
               imageUrl = pub.publicUrl;
             }
 
-            const { error } = await this.supabase.from('love_notes').insert({
+            const { error } = await sb.from('love_notes').insert({
               content: this.composeText.trim(),
               image_url: imageUrl,
               status: 'unseen',
@@ -394,8 +422,14 @@
         async openSavedNotes() {
           this.savedNotesOpen = true;
           this.savedNotesLoading = true;
+          const sb = this.initSupabase();
+          if (!sb) {
+            this.savedNotes = [];
+            this.savedNotesLoading = false;
+            return;
+          }
           try {
-            const { data, error } = await this.supabase
+            const { data, error } = await sb
               .from('love_notes')
               .select('*')
               .eq('status', 'saved')
@@ -415,9 +449,11 @@
         },
 
         async deleteSavedNote(id) {
+          const sb = this.initSupabase();
+          if (!sb) return;
           this.savedNoteActionLoading = true;
           try {
-            const { error } = await this.supabase.from('love_notes').delete().eq('id', id);
+            const { error } = await sb.from('love_notes').delete().eq('id', id);
             if (error) throw error;
             this.savedNotes = this.savedNotes.filter((n) => n.id !== id);
           } catch (e) {
@@ -958,6 +994,12 @@
               class="py-4 text-center text-[#4a3520]">
               <template x-if="noteJustSaved">
                 <p class="mb-4 text-xl sm:text-2xl">Saved! You'll find it under Saved notes. 💛</p>
+              </template>
+              <template x-if="noteError">
+                <p class="mb-4 text-base text-[#8a7355]" style="font-family: 'Inter', sans-serif;">
+                  Couldn't connect just now — you can still write a note below, it'll send once we're back
+                  online.
+                </p>
               </template>
               <p class="text-2xl leading-snug sm:text-[26px]">There is no note here right now.</p>
               <p class="mt-2 text-xl sm:text-2xl">Write one?</p>
