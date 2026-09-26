@@ -275,6 +275,30 @@
         composeImagePreview: null,
         composeSending: false,
 
+        // --- Bubble emoji + note color theme ---
+        noteEmojiOptions: ['😁', '💌', '❤️', '💛', '🥰', '😘', '🌙', '✨', '💍', '🎀'],
+        noteThemeOptions: [
+          { key: 'amber', name: 'Amber', paper: '#fdf6e3', ink: '#4a3520', ink30: 'rgba(74,53,32,0.3)', dowel1: '#92651c', dowel2: '#c99a4a', swatch: '#c99a4a' },
+          { key: 'rose', name: 'Rose', paper: '#fff0f5', ink: '#7a2b48', ink30: 'rgba(122,43,72,0.3)', dowel1: '#9d3f63', dowel2: '#e08fae', swatch: '#e08fae' },
+          { key: 'lavender', name: 'Lavender', paper: '#f5f0ff', ink: '#4a3b6b', ink30: 'rgba(74,59,107,0.3)', dowel1: '#6b5599', dowel2: '#a68fd6', swatch: '#a68fd6' },
+          { key: 'mint', name: 'Mint', paper: '#f0fff4', ink: '#1f4d3a', ink30: 'rgba(31,77,58,0.3)', dowel1: '#2f7a56', dowel2: '#7ecba0', swatch: '#7ecba0' },
+          { key: 'sky', name: 'Sky', paper: '#f0f8ff', ink: '#1f3a5c', ink30: 'rgba(31,58,92,0.3)', dowel1: '#2f5f8a', dowel2: '#7fb2e0', swatch: '#7fb2e0' },
+        ],
+        composeEmoji: '😁',
+        composeTheme: 'amber',
+        themeByKey(key) {
+          return this.noteThemeOptions.find((t) => t.key === key) || this.noteThemeOptions[0];
+        },
+        get activeTheme() {
+          const key = this.noteMode === 'compose'
+            ? this.composeTheme
+            : (this.currentNote && this.currentNote.theme) || 'amber';
+          return this.themeByKey(key);
+        },
+        get bubbleEmoji() {
+          return (this.currentNote && this.currentNote.emoji) ? this.currentNote.emoji : '😁';
+        },
+
         savedNotesOpen: false,
         savedNotesLoading: false,
         savedNotes: [],
@@ -366,6 +390,8 @@
           this.composeText = '';
           this.composeImageFile = null;
           this.composeImagePreview = null;
+          this.composeEmoji = '😁';
+          this.composeTheme = 'amber';
           this.noteMode = 'compose';
         },
 
@@ -414,6 +440,8 @@
               content: this.composeText.trim(),
               image_url: imageUrl,
               status: 'unseen',
+              emoji: this.composeEmoji,
+              theme: this.composeTheme,
             });
             if (error) throw error;
 
@@ -570,7 +598,7 @@
           update();
           setInterval(update, 1000);
         }
-      }" x-init="startCounting(); if (unlocked) checkSpecialDay()"
+      }" x-init="startCounting(); if (unlocked) { checkSpecialDay(); fetchLatestNote(); }"
     class="min-h-dvh min-w-80 bg-white text-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
     <!-- Password Gate -->
     <div x-cloak x-show="!unlocked" x-transition:leave="transition ease-in duration-200"
@@ -919,7 +947,7 @@
     <button x-cloak x-show="unlocked && !letterOpen" x-on:click="openLetter()" type="button"
       aria-label="Open love letter"
       class="letter-bubble fixed bottom-5 left-5 z-40 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 text-2xl shadow-lg shadow-orange-500/30 transition hover:scale-105 active:scale-95 sm:bottom-6 sm:left-6">
-      <span aria-hidden="true">😁</span>
+      <span aria-hidden="true" x-text="bubbleEmoji"></span>
       <span aria-hidden="true" class="absolute -top-0.5 -right-0.5 flex size-3.5">
         <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
         <span class="relative inline-flex size-3.5 rounded-full bg-red-500"></span>
@@ -949,23 +977,24 @@
           x-transition:leave="transition-all duration-300 ease-in" x-transition:leave-start="opacity-100 scale-y-100"
           x-transition:leave-end="opacity-0 scale-y-0" style="transform-origin: top center;" class="relative">
           <!-- Top dowel -->
-          <div
-            class="relative z-10 h-4 rounded-full bg-gradient-to-r from-amber-800 via-amber-500 to-amber-800 shadow-md">
+          <div class="relative z-10 h-4 rounded-full shadow-md"
+            x-bind:style="`background:linear-gradient(to right, ${activeTheme.dowel1}, ${activeTheme.dowel2}, ${activeTheme.dowel1});`">
           </div>
 
           <!-- Paper -->
           <div
-            class="relative -mt-1 -mb-1 max-h-[75dvh] overflow-y-auto bg-[#fdf6e3] px-7 py-8 shadow-2xl sm:px-10 sm:py-10">
+            class="relative -mt-1 -mb-1 max-h-[75dvh] overflow-y-auto bg-[color:var(--note-paper)] px-7 py-8 shadow-2xl sm:px-10 sm:py-10"
+            x-bind:style="`--note-paper:${activeTheme.paper}; --note-ink:${activeTheme.ink}; --note-ink-30:${activeTheme.ink30};`">
 
             <!-- Loading -->
             <div x-show="noteMode === 'loading'" class="flex flex-col items-center justify-center py-10">
-              <svg class="size-8 animate-spin text-[#a67c3d]" xmlns="http://www.w3.org/2000/svg" fill="none"
+              <svg class="size-8 animate-spin text-[color:var(--note-ink)] opacity-70" xmlns="http://www.w3.org/2000/svg" fill="none"
                 viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor"
                   d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
               </svg>
-              <p style="font-family: 'Caveat', cursive;" class="mt-3 text-xl text-[#4a3520]">Unrolling the
+              <p style="font-family: 'Caveat', cursive;" class="mt-3 text-xl text-[color:var(--note-ink)]">Unrolling the
                 letter…</p>
             </div>
 
@@ -983,21 +1012,23 @@
 
                 <!-- Handwritten note -->
                 <div style="font-family: 'Caveat', cursive;"
-                  class="whitespace-pre-line text-center text-xl leading-relaxed text-[#4a3520] sm:text-2xl"
+                  class="whitespace-pre-line text-center text-xl leading-relaxed text-[color:var(--note-ink)] sm:text-2xl"
                   x-text="currentNote.content"></div>
 
                 <!-- Seen / Save actions -->
-                <div class="mt-8 flex items-center justify-center gap-3 border-t border-[#e4d5ae] pt-6">
+                <div class="mt-8 flex items-center justify-center gap-3 pt-6"
+                  style="border-top:1px solid var(--note-ink-30);">
                   <button type="button" x-on:click="saveNote()" x-bind:disabled="noteActionLoading"
-                    class="rounded-lg bg-[#4a3520] px-4 py-2 text-sm font-medium text-[#fdf6e3] transition hover:bg-[#5a4128] active:opacity-80 disabled:opacity-60">
+                    class="rounded-lg bg-[color:var(--note-ink)] px-4 py-2 text-sm font-medium text-[color:var(--note-paper)] transition active:opacity-80 disabled:opacity-60 hover:opacity-90">
                     Save 💌
                   </button>
                   <button type="button" x-on:click="markNoteSeen()" x-bind:disabled="noteActionLoading"
-                    class="rounded-lg border border-[#4a3520]/30 px-4 py-2 text-sm font-medium text-[#4a3520] transition hover:bg-[#4a3520]/10 active:opacity-80 disabled:opacity-60">
+                    class="rounded-lg px-4 py-2 text-sm font-medium text-[color:var(--note-ink)] transition active:opacity-80 disabled:opacity-60 hover:bg-[color:var(--note-ink)]/10"
+                    style="border:1px solid var(--note-ink-30);">
                     Seen, remove it
                   </button>
                 </div>
-                <p class="mt-2 text-center text-xs text-[#8a7355]">
+                <p class="mt-2 text-center text-xs text-[color:var(--note-ink)] opacity-60">
                   "Seen" removes this note for good. "Save" keeps it under Saved notes.
                 </p>
               </div>
@@ -1005,12 +1036,12 @@
 
             <!-- No note right now -->
             <div x-show="noteMode === 'empty'" style="font-family: 'Caveat', cursive;"
-              class="py-4 text-center text-[#4a3520]">
+              class="py-4 text-center text-[color:var(--note-ink)]">
               <template x-if="noteJustSaved">
                 <p class="mb-4 text-xl sm:text-2xl">Saved! You'll find it under Saved notes. 💛</p>
               </template>
               <template x-if="noteError">
-                <p class="mb-4 text-base text-[#8a7355]" style="font-family: 'Inter', sans-serif;">
+                <p class="mb-4 text-base opacity-70" style="font-family: 'Inter', sans-serif;">
                   Couldn't connect just now — you can still write a note below, it'll send once we're back
                   online.
                 </p>
@@ -1018,22 +1049,24 @@
               <p class="text-2xl leading-snug sm:text-[26px]">There is no note here right now.</p>
               <p class="mt-2 text-xl sm:text-2xl">Write one?</p>
               <button type="button" x-on:click="startCompose()"
-                class="mt-5 rounded-lg bg-[#4a3520] px-5 py-2 text-sm font-medium text-[#fdf6e3] transition hover:bg-[#5a4128] active:opacity-80"
+                class="mt-5 rounded-lg bg-[color:var(--note-ink)] px-5 py-2 text-sm font-medium text-[color:var(--note-paper)] transition hover:opacity-90 active:opacity-80"
                 style="font-family: 'Inter', sans-serif;">
                 Write a note
               </button>
             </div>
 
             <!-- Compose a new note -->
-            <div x-show="noteMode === 'compose'" style="font-family: 'Inter', sans-serif;" class="text-[#4a3520]">
+            <div x-show="noteMode === 'compose'" style="font-family: 'Inter', sans-serif;" class="text-[color:var(--note-ink)]">
               <p style="font-family: 'Caveat', cursive;" class="mb-3 text-center text-2xl">Write your note</p>
 
               <textarea x-model="composeText" rows="6" placeholder="Say what's on your heart…"
-                class="w-full rounded-lg border border-[#e4d5ae] bg-white/70 p-3 text-base text-[#4a3520] placeholder-[#a67c3d]/60 outline-none focus:border-[#a67c3d] focus:ring-2 focus:ring-[#a67c3d]/30"></textarea>
+                class="w-full rounded-lg bg-white/70 p-3 text-base text-[color:var(--note-ink)] placeholder-[color:var(--note-ink)] placeholder-opacity-40 outline-none focus:ring-2"
+                style="border:1px solid var(--note-ink-30);"></textarea>
 
               <div class="mt-3 flex items-center gap-3">
                 <label
-                  class="cursor-pointer rounded-lg border border-[#e4d5ae] px-3 py-1.5 text-xs font-medium hover:bg-[#e4d5ae]/30">
+                  class="cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-[color:var(--note-ink)]/10"
+                  style="border:1px solid var(--note-ink-30);">
                   <span x-text="composeImageFile ? 'Change photo' : 'Add a photo (optional)'"></span>
                   <input type="file" accept="image/*" class="hidden" x-on:change="onComposeImagePicked($event)" />
                 </label>
@@ -1041,15 +1074,45 @@
                   class="size-10 rounded-md object-cover" />
               </div>
 
+              <!-- Bubble emoji picker -->
+              <div class="mt-4">
+                <p class="mb-2 text-xs font-medium opacity-70" style="font-family: 'Inter', sans-serif;">
+                  Bubble emoji</p>
+                <div class="flex flex-wrap gap-2">
+                  <template x-for="emo in noteEmojiOptions" :key="emo">
+                    <button type="button" x-on:click="composeEmoji = emo" :aria-pressed="composeEmoji === emo"
+                      class="flex size-9 items-center justify-center rounded-full bg-white/70 text-lg transition"
+                      :style="composeEmoji === emo ? `box-shadow:0 0 0 2px var(--note-ink);` : ''"
+                      :class="composeEmoji === emo ? '' : 'opacity-55 hover:opacity-100'"
+                      x-text="emo"></button>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Note color theme picker -->
+              <div class="mt-4">
+                <p class="mb-2 text-xs font-medium opacity-70" style="font-family: 'Inter', sans-serif;">
+                  Note theme</p>
+                <div class="flex flex-wrap gap-2">
+                  <template x-for="t in noteThemeOptions" :key="t.key">
+                    <button type="button" x-on:click="composeTheme = t.key" :aria-label="t.name"
+                      :aria-pressed="composeTheme === t.key"
+                      class="size-8 rounded-full border border-black/10 transition"
+                      :style="`background:${t.swatch}; ${composeTheme === t.key ? 'box-shadow:0 0 0 2px var(--note-ink), 0 0 0 4px var(--note-paper);' : ''}`"></button>
+                  </template>
+                </div>
+              </div>
+
               <div class="mt-5 flex items-center justify-center gap-3">
                 <button type="button" x-on:click="sendNote()"
                   x-bind:disabled="composeSending || !composeText.trim()"
-                  class="rounded-lg bg-[#4a3520] px-4 py-2 text-sm font-medium text-[#fdf6e3] transition hover:bg-[#5a4128] active:opacity-80 disabled:opacity-60">
+                  class="rounded-lg bg-[color:var(--note-ink)] px-4 py-2 text-sm font-medium text-[color:var(--note-paper)] transition hover:opacity-90 active:opacity-80 disabled:opacity-60">
                   <span x-show="!composeSending">Send note 💌</span>
                   <span x-show="composeSending">Sending…</span>
                 </button>
                 <button type="button" x-on:click="noteMode = 'empty'"
-                  class="rounded-lg border border-[#4a3520]/30 px-4 py-2 text-sm font-medium text-[#4a3520] transition hover:bg-[#4a3520]/10 active:opacity-80">
+                  class="rounded-lg px-4 py-2 text-sm font-medium text-[color:var(--note-ink)] transition hover:bg-[color:var(--note-ink)]/10 active:opacity-80"
+                  style="border:1px solid var(--note-ink-30);">
                   Cancel
                 </button>
               </div>
@@ -1057,8 +1120,8 @@
           </div>
 
           <!-- Bottom dowel -->
-          <div
-            class="relative z-10 h-4 rounded-full bg-gradient-to-r from-amber-800 via-amber-500 to-amber-800 shadow-md">
+          <div class="relative z-10 h-4 rounded-full shadow-md"
+            x-bind:style="`background:linear-gradient(to right, ${activeTheme.dowel1}, ${activeTheme.dowel2}, ${activeTheme.dowel1});`">
           </div>
         </div>
       </div>
@@ -1264,20 +1327,24 @@
               <div class="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
                 <button type="button" x-on:click="toggleSavedNote(note.id)"
                   class="flex w-full items-center justify-between gap-3 bg-zinc-50 px-4 py-3 text-left hover:bg-zinc-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-800">
-                  <span class="truncate text-sm text-zinc-700 dark:text-zinc-200" x-text="note.content"></span>
+                  <span class="flex min-w-0 items-center gap-2">
+                    <span x-show="note.emoji" x-text="note.emoji"></span>
+                    <span class="truncate text-sm text-zinc-700 dark:text-zinc-200" x-text="note.content"></span>
+                  </span>
                   <span class="flex-none text-xs text-zinc-400" x-text="openSavedNoteId === note.id ? '▲' : '▼'"></span>
                 </button>
-                <div x-show="openSavedNoteId === note.id"
-                  class="bg-[#fdf6e3] px-4 py-4 dark:bg-[#f7e8d0]">
+                <div x-show="openSavedNoteId === note.id" class="px-4 py-4"
+                  x-bind:style="`background:${themeByKey(note.theme).paper}; color:${themeByKey(note.theme).ink};`">
                   <img x-show="note.image_url" :src="note.image_url" alt=""
                     class="mx-auto mb-3 w-32 rounded-sm object-cover shadow-md" />
                   <p style="font-family: 'Caveat', cursive;"
-                    class="whitespace-pre-line text-center text-xl leading-relaxed text-[#4a3520]"
+                    class="whitespace-pre-line text-center text-xl leading-relaxed"
                     x-text="note.content"></p>
                   <div class="mt-3 flex justify-center">
                     <button type="button" x-on:click="deleteSavedNote(note.id)"
                       x-bind:disabled="savedNoteActionLoading"
-                      class="rounded-lg border border-[#4a3520]/30 px-3 py-1.5 text-xs font-medium text-[#4a3520] transition hover:bg-[#4a3520]/10 disabled:opacity-60">
+                      class="rounded-lg px-3 py-1.5 text-xs font-medium transition hover:opacity-75 disabled:opacity-60"
+                      x-bind:style="`border:1px solid ${themeByKey(note.theme).ink30};`">
                       Remove
                     </button>
                   </div>
