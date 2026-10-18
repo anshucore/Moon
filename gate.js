@@ -1,7 +1,7 @@
 /* Password gate. Add <script src="gate.js"></script> (plus the hide-style line) to every page. */
 (function () {
   var SALT = "maxton-gate-v1";
-  var HASH = "7ee87b4b748cee3cd6a7a6fbc1010861df4c7d6d90d0d0263d0dbc4091b4c7f7"; // PBKDF2 hash, not the password
+  var HASH = "78f5cc917a20d4a93c0438fea988e3b03547d3a5b706c094bbc370ecf3221ea1"; // PBKDF2 hash, not the password
   var ITER = 200000, KEY = "maxton_gate_ok";
 
   function hex(buf){return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,"0")}).join("");}
