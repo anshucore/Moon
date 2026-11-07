@@ -224,6 +224,38 @@
         checking: false,
         correctHash: '4eb5846da827413241cccdfd2c225543f16aaef1f9af51f6a245a9cdeb1ebfd1',
 
+        // --- Random hero photo (new one on every reload) ---
+        heroFallback: 'assets/model.jpeg',
+        heroPhoto: 'assets/model.jpeg',
+        heroPool: [],
+        heroSets: [
+          // { prefix: 'filename prefix in images/', count: number of photos }
+          { prefix: 'newdate1', count: 45 }, // our1.html <- adjust to real prefix/count
+          { prefix: 'newdate2', count: 45 }, // our2.html <- adjust to real prefix/count
+          { prefix: 'newdate3', count: 45 }, // our3.html <- adjust to real prefix/count
+          { prefix: 'newdate4', count: 45 }  // our4.html (confirmed)
+        ],
+        pickHeroPhoto() {
+          if (!this.heroPool.length) {
+            this.heroSets.forEach(s => {
+              for (let i = 1; i <= s.count; i++) {
+                this.heroPool.push('images/' + s.prefix + ' (' + i + ').jpeg');
+              }
+            });
+          }
+          const idx = Math.floor(Math.random() * this.heroPool.length);
+          this.heroPhoto = encodeURI(this.heroPool[idx]);
+          this.heroPool.splice(idx, 1);
+        },
+        heroPhotoFailed() {
+          // That file doesn't exist: try another, or fall back to the default
+          if (this.heroPool.length) {
+            this.pickHeroPhoto();
+          } else {
+            this.heroPhoto = this.heroFallback;
+          }
+        },
+
         async submitPassword() {
           if (!this.passwordInput) return;
           this.checking = true;
@@ -246,36 +278,6 @@
           this.checking = false;
           this.passwordInput = '';
         },
-    // --- Random hero photo (changes on every reload) ---
-heroPhoto: 'assets/photo.jpeg',
-heroPool: [],
-heroSets: [
-  // { prefix: 'filename prefix', count: how many photos }
-  { prefix: 'newdate1', count: 45 },   // our1.html  <- adjust to real prefix/count
-  { prefix: 'newdate2', count: 45 },   // our2.html  <- adjust
-  { prefix: 'newdate3', count: 45 },   // our3.html  <- adjust
-  { prefix: 'newdate4', count: 45 },   // our4.html  (confirmed)
-],
-pickHeroPhoto() {
-  if (!this.heroPool.length) {
-    this.heroSets.forEach(s => {
-      for (let i = 1; i <= s.count; i++) {
-        this.heroPool.push(`images/${s.prefix} (${i}).jpeg`);
-      }
-    });
-  }
-  const idx = Math.floor(Math.random() * this.heroPool.length);
-  this.heroPhoto = encodeURI(this.heroPool[idx]);
-  this.heroPool.splice(idx, 1);
-},
-heroPhotoFailed() {
-  // File doesn't exist: try another one, or fall back to the default
-  if (this.heroPool.length) {
-    this.pickHeroPhoto();
-  } else {
-    this.heroPhoto = 'assets/photo.jpeg';
-  }
-},
 
         // --- Love letter bubble (now backed by Supabase) ---
         letterOpen: false,
@@ -629,7 +631,7 @@ heroPhotoFailed() {
           update();
           setInterval(update, 1000);
         }
-      }" }" x-init="pickHeroPhoto(); startCounting(); if (unlocked) checkSpecialDay()"
+      }" x-init="pickHeroPhoto(); startCounting(); if (unlocked) { checkSpecialDay(); fetchLatestNote(); }"
     class="min-h-dvh min-w-80 bg-white text-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
     <!-- Password Gate -->
     <div x-cloak x-show="!unlocked" x-transition:leave="transition ease-in duration-200"
@@ -793,8 +795,8 @@ heroPhotoFailed() {
         <div class="col-span-1 md:col-span-5">
           <button type="button" x-on:click="timerOpen = true" aria-label="See how long we've been together"
             class="group relative block w-full cursor-pointer overflow-hidden rounded-xl">
-            <img src="assets/photo.jpeg" :src="heroPhoto" @error="heroPhotoFailed()" alt="Photo"
-  class="rounded-xl object-cover w-full aspect-square transition duration-200 ease-out group-hover:scale-105 group-hover:brightness-90" />
+            <img :src="heroPhoto" @error="heroPhotoFailed()" alt="Photo"
+              class="rounded-xl object-cover w-full aspect-square transition duration-200 ease-out group-hover:scale-105 group-hover:brightness-90" />
             <span
               class="pointer-events-none absolute inset-0 flex items-end justify-center bg-gradient-to-t from-black/50 via-transparent to-transparent p-4 opacity-0 transition duration-200 group-hover:opacity-100">
               <span class="text-sm font-medium text-white">Tap to see our time together</span>
